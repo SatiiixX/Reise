@@ -1,0 +1,2017 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#06101f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Voyage</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+/* ═══ TOKENS ═══ */
+:root{
+  --bg:#06101f;--bg2:#0a1628;--bg3:#0f1e35;--card:#132240;--card2:#182a50;
+  --gold:#d4a843;--gold2:#e8c547;--gold3:rgba(212,168,67,.12);
+  --teal:#2dd4c0;--coral:#f06060;--violet:#8b5cf6;--green:#3dd68c;
+  --text:#cdd8ee;--text2:#7a94bc;--text3:#3d5a82;
+  --border:rgba(255,255,255,0.055);--border2:rgba(255,255,255,.1);
+  --r:16px;--rsm:10px;--rxs:7px;
+  --shadow:0 8px 32px rgba(0,0,0,.5);
+}
+@media(prefers-color-scheme:light){
+  :root{--bg:#f0f4fa;--bg2:#e8edf7;--bg3:#dde4f0;--card:#fff;--card2:#f5f8ff;
+    --text:#1a2640;--text2:#4a6090;--text3:#8aa0c0;--border:rgba(0,0,0,.08);--border2:rgba(0,0,0,.15);
+    --gold:#b8860b;--gold2:#c9971a;--gold3:rgba(184,134,11,.1);}
+}
+
+/* ═══ RESET ═══ */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);
+  display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:relative}
+
+/* ═══ SCREENS ═══ */
+.scr{display:none;flex-direction:column;height:100%;animation:scrIn .2s ease}
+.scr.on{display:flex}
+@keyframes scrIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding-bottom:82px;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+
+/* ═══ BOTTOM NAV ═══ */
+.bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;
+  background:var(--bg);border-top:1px solid var(--border);
+  display:flex;z-index:500;padding:6px 0 max(10px,env(safe-area-inset-bottom))}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  background:none;border:none;color:var(--text3);font-family:'DM Sans',sans-serif;
+  font-size:9px;font-weight:500;letter-spacing:.5px;cursor:pointer;
+  padding:5px 2px;transition:color .2s;text-transform:uppercase}
+.nb svg{width:21px;height:21px;stroke-width:1.7;transition:stroke .2s}
+.nb.on{color:var(--gold)}
+.nb.on svg{stroke:var(--gold)}
+
+/* ═══ FAB ═══ */
+.fab{position:fixed;bottom:72px;right:max(16px,calc(50vw - 224px));
+  width:48px;height:48px;background:var(--gold);border:none;border-radius:50%;
+  color:#06101f;font-size:22px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;box-shadow:0 4px 20px rgba(212,168,67,.45);
+  transition:all .18s;z-index:498;font-weight:300}
+.fab:active{transform:scale(.91)}
+
+/* ═══ PAGE HEADER ═══ */
+.ph{padding:max(48px,env(safe-area-inset-top)) 20px 14px;
+  background:linear-gradient(180deg,var(--bg2),transparent)}
+.ph-t{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;
+  line-height:1;letter-spacing:-.3px}
+.ph-t em{font-style:italic;color:var(--gold)}
+.ph-s{color:var(--text2);font-size:11px;margin-top:4px}
+
+/* ═══ OVERLAY / DRAWER ═══ */
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
+  backdrop-filter:blur(6px);z-index:600;align-items:flex-end;justify-content:center}
+.ov.on{display:flex}
+.dr{background:var(--bg2);border-radius:22px 22px 0 0;width:100%;max-width:480px;
+  max-height:93vh;overflow-y:auto;padding:0 20px max(32px,env(safe-area-inset-bottom));
+  animation:drUp .25s cubic-bezier(.16,1,.3,1)}
+.dr::-webkit-scrollbar{display:none}
+@keyframes drUp{from{transform:translateY(100%)}to{transform:none}}
+.dhandle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:10px auto 18px}
+.dr-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:700;margin-bottom:18px}
+
+/* ═══ FORMS ═══ */
+.fg{margin-bottom:13px}
+.fl{display:block;font-size:10px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.9px;color:var(--text2);margin-bottom:6px}
+.fi{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rsm);
+  color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;
+  padding:11px 13px;outline:none;transition:border-color .2s;appearance:none}
+.fi:focus{border-color:var(--gold)}
+.fi option{background:var(--bg2)}
+textarea.fi{resize:none;min-height:68px;line-height:1.5}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.frow3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+/* ═══ BUTTONS ═══ */
+.btn{width:100%;padding:13px;border:none;border-radius:var(--rsm);
+  font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;
+  cursor:pointer;transition:all .18s}
+.btn-p{background:var(--gold);color:#06101f}
+.btn-p:active{opacity:.85}
+.btn-g{background:transparent;color:var(--text2);border:1px solid var(--border2);margin-top:8px}
+.btn-d{background:rgba(240,96,96,.1);color:var(--coral);border:1px solid rgba(240,96,96,.2);margin-top:8px}
+.bsm{padding:6px 13px;border-radius:var(--rxs);font-size:11px;font-weight:600;
+  border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;line-height:1.3}
+.bsm-g{background:var(--bg3);color:var(--text);border:1px solid var(--border2)}
+.bsm-p{background:var(--gold3);color:var(--gold);border:1px solid rgba(212,168,67,.25)}
+.bsm-d{background:rgba(240,96,96,.08);color:var(--coral);border:1px solid rgba(240,96,96,.2)}
+
+/* ═══ CARDS ═══ */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:15px}
+.card+.card,.card+.stcard,.stcard+.stcard{margin-top:9px}
+
+/* ═══ TRIP CARD ═══ */
+.tcard{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:15px 16px;cursor:pointer;transition:all .18s;position:relative;
+  overflow:hidden;margin-bottom:9px}
+.tcard::before{content:'';position:absolute;inset:0 auto 0 0;width:3px;
+  background:var(--gold);transform:scaleY(0);transition:.2s;transform-origin:center}
+.tcard:hover::before,.tcard:active::before{transform:scaleY(1)}
+.tcard:active{transform:scale(.985)}
+.tcard-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.tcard-flag{font-size:28px;line-height:1;flex-shrink:0}
+.sp{font-size:9px;font-weight:700;padding:3px 9px;border-radius:16px;
+  text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+.sp-planned{background:rgba(212,168,67,.15);color:var(--gold2)}
+.sp-done{background:rgba(61,214,140,.15);color:var(--green)}
+.sp-dream{background:rgba(61,90,130,.2);color:var(--text2)}
+.tname{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:700;
+  margin:7px 0 2px;line-height:1.1}
+.tmeta{font-size:11px;color:var(--text2);display:flex;gap:10px;flex-wrap:wrap;line-height:1.4}
+.bbar{margin-top:10px;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.bfill{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:2px;transition:width .5s}
+.blbl{display:flex;justify-content:space-between;margin-top:5px;font-size:10px;color:var(--text3)}
+
+/* ═══ SEARCH / CHIPS ═══ */
+.sbar{margin:0 20px 12px;position:relative}
+.sbar input{width:100%;background:var(--card);border:1px solid var(--border);
+  border-radius:12px;color:var(--text);font-family:'DM Sans',sans-serif;
+  font-size:14px;padding:11px 14px 11px 40px;outline:none;transition:border-color .2s}
+.sbar input:focus{border-color:var(--gold)}
+.sbar-i{position:absolute;left:13px;top:50%;transform:translateY(-50%);
+  color:var(--text3);pointer-events:none}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:0 20px 13px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;padding:6px 14px;background:var(--card);border:1px solid var(--border);
+  border-radius:14px;font-size:11px;color:var(--text2);cursor:pointer;
+  font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap}
+.chip.on{background:var(--gold);color:#06101f;border-color:var(--gold);font-weight:600}
+
+/* ═══ STATS TILES ═══ */
+.stiles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:0 20px 14px}
+.stile{background:var(--card);border:1px solid var(--border);border-radius:var(--rsm);
+  padding:13px 10px;text-align:center}
+.sv{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:var(--gold)}
+.sl{font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:.9px;margin-top:2px}
+.stiles2{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
+.stile2{background:var(--card);border:1px solid var(--border);border-radius:var(--rsm);padding:15px}
+.sv2{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:var(--gold)}
+.sl2{font-size:10px;color:var(--text2);margin-top:3px}
+.stile2.w2{grid-column:span 2}
+.stile2.accent{background:var(--gold3);border-color:rgba(212,168,67,.2)}
+
+/* ═══ SECTION LABELS ═══ */
+.slabel{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.6px;
+  color:var(--text3);padding:0 20px 8px}
+.shead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.stitle{font-size:13px;font-weight:600;color:var(--text)}
+.addbtn{background:var(--bg3);border:1px solid var(--border2);color:var(--gold);
+  width:28px;height:28px;border-radius:7px;cursor:pointer;display:flex;
+  align-items:center;justify-content:center;font-size:16px;transition:all .15s}
+
+/* ═══ TABS ═══ */
+.tabs{display:flex;gap:4px;padding:0 20px 13px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:7px 14px;background:var(--card);border:1px solid var(--border);
+  border-radius:14px;color:var(--text2);font-size:11px;font-weight:500;cursor:pointer;
+  transition:all .18s;font-family:'DM Sans',sans-serif;white-space:nowrap}
+.tab.on{background:var(--gold);color:#06101f;border-color:var(--gold);font-weight:600}
+.tp{display:none;padding:0 20px;animation:fadeIn .18s ease}
+.tp.on{display:block}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+/* ═══ STOP / ROUTE ═══ */
+.stcard{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:13px 14px;margin-bottom:8px}
+.stcard-top{display:flex;justify-content:space-between;align-items:flex-start}
+.stcard-n{font-size:14px;font-weight:600}
+.stcard-d{font-size:10px;color:var(--gold);font-weight:700;
+  background:var(--gold3);padding:2px 8px;border-radius:8px}
+.stcard-cost{font-size:11px;color:var(--green);margin-top:4px;font-weight:500}
+.stcard-note{font-size:11px;color:var(--text2);margin-top:3px;line-height:1.5;font-style:italic}
+.conn{display:flex;align-items:center;gap:6px;padding:1px 0;margin-bottom:1px}
+.conn-l{width:2px;height:16px;background:var(--border2);margin-left:9px;flex-shrink:0}
+.tbadge{font-size:10px;color:var(--text2);background:var(--bg3);
+  border-radius:5px;padding:2px 8px;white-space:nowrap}
+
+/* ═══ BUDGET ═══ */
+.bov{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:15px;margin-bottom:11px}
+.btotal{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:700;color:var(--gold);line-height:1}
+.btotal-sub{font-size:14px;color:var(--text2);margin-right:4px}
+.bcats{margin-top:13px;display:flex;flex-direction:column;gap:8px}
+.bcat-r{display:flex;flex-direction:column;gap:3px}
+.bcat-h{display:flex;justify-content:space-between;font-size:12px;color:var(--text2)}
+.bbr{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.bbrf{height:100%;border-radius:3px}
+.forecast{background:linear-gradient(135deg,rgba(139,92,246,.1),rgba(45,212,192,.06));
+  border:1px solid rgba(139,92,246,.2);border-radius:var(--rsm);padding:12px;margin-bottom:11px}
+.forecast-t{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;
+  color:var(--violet);margin-bottom:7px}
+
+/* ═══ CHECKLIST ═══ */
+.clist{display:flex;flex-direction:column;gap:7px}
+.ci{display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--card);
+  border:1px solid var(--border);border-radius:var(--rsm);cursor:pointer;transition:all .15s}
+.ci.ck{opacity:.5}
+.ci.ck .ci-l{text-decoration:line-through;color:var(--text2)}
+.ci-box{width:18px;height:18px;border:1.5px solid var(--border2);border-radius:5px;
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.ci.ck .ci-box{background:var(--green);border-color:var(--green)}
+.ci-l{font-size:13px;flex:1;line-height:1.3}
+.ci-sub{font-size:10px;color:var(--text3);margin-top:1px}
+
+/* ═══ VACCINE / DOC LIST ITEMS ═══ */
+.vitem{background:var(--card);border:1px solid var(--border);border-radius:var(--rsm);
+  padding:11px 13px;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.vitem-n{font-size:13px;font-weight:500}
+.vitem-sub{font-size:10px;color:var(--text2);margin-top:2px}
+.vpill{font-size:9px;font-weight:700;padding:3px 8px;border-radius:8px;flex-shrink:0}
+.vp-ok{background:rgba(61,214,140,.15);color:var(--green)}
+.vp-pl{background:rgba(212,168,67,.15);color:var(--gold2)}
+.vp-no{background:rgba(240,96,96,.15);color:var(--coral)}
+
+/* ═══ SPOTS ═══ */
+.spot{background:var(--card);border:1px solid var(--border);border-radius:var(--rsm);
+  padding:12px 13px;margin-bottom:7px}
+.spot-top{display:flex;justify-content:space-between;align-items:flex-start;gap:6px}
+.spot-n{font-size:13px;font-weight:600}
+.spot-type{font-size:9px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.spot-note{font-size:11px;color:var(--text2);margin-top:5px;line-height:1.5}
+.stars{color:var(--gold);font-size:12px;letter-spacing:1px}
+
+/* ═══ PHOTO GRID ═══ */
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:12px}
+.pthumb{aspect-ratio:1;background:var(--bg3);border-radius:8px;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+  cursor:pointer;border:1px solid var(--border);position:relative}
+.pthumb img{width:100%;height:100%;object-fit:cover}
+.pthumb-add{border:1.5px dashed var(--border2);color:var(--text3);font-size:22px}
+.pthumb input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+
+/* ═══ DOC CARD ═══ */
+.doccard{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:13px 14px;margin-bottom:8px;display:flex;gap:12px}
+.doc-ico{font-size:26px;flex-shrink:0;line-height:1.2}
+.doc-n{font-size:13px;font-weight:600}
+.doc-m{font-size:11px;color:var(--text2);margin-top:3px}
+.doc-exp{font-size:10px;font-weight:600;padding:2px 8px;border-radius:7px;
+  margin-top:6px;display:inline-block}
+.exp-ok{background:rgba(61,214,140,.12);color:var(--green)}
+.exp-warn{background:rgba(212,168,67,.12);color:var(--gold2)}
+.exp-over{background:rgba(240,96,96,.12);color:var(--coral)}
+
+/* ═══ MAP ═══ */
+#map-wrap{height:calc(100vh - 82px);position:relative}
+#leafmap{height:100%;width:100%}
+.map-trip-panel{position:absolute;bottom:0;left:0;right:0;z-index:400;
+  background:linear-gradient(0deg,var(--bg) 0%,var(--bg2) 60%,transparent 100%);
+  padding:16px 20px 20px;pointer-events:none}
+.map-trip-panel.has-content{pointer-events:all}
+.map-country-pill{position:absolute;top:12px;left:50%;transform:translateX(-50%);
+  background:var(--card);border:1px solid var(--border2);border-radius:20px;
+  padding:6px 14px;font-size:12px;font-weight:600;z-index:400;
+  opacity:0;transition:opacity .2s;white-space:nowrap;pointer-events:none;
+  box-shadow:var(--shadow)}
+.map-country-pill.show{opacity:1}
+.map-legend{position:absolute;top:12px;right:12px;z-index:400;
+  background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;
+  display:flex;flex-direction:column;gap:5px}
+.mleg{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text2)}
+.mleg-d{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+
+/* ═══ DETAIL HERO ═══ */
+.dhero{padding:max(46px,env(safe-area-inset-top)) 20px 16px;
+  background:linear-gradient(180deg,var(--bg2) 0%,transparent 100%)}
+.back{display:flex;align-items:center;gap:5px;background:none;border:none;
+  color:var(--gold);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;
+  cursor:pointer;padding:0;margin-bottom:14px}
+.dhero-flag{font-size:40px;margin-bottom:7px;line-height:1}
+.dhero-t{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:700;line-height:1.05}
+.dhero-s{color:var(--text2);font-size:11px;margin-top:5px}
+
+/* ═══ XBAR ═══ */
+.xbar{padding:0 20px 11px;display:flex;gap:6px}
+.xb{flex:1;padding:9px 5px;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--rsm);color:var(--text);font-family:'DM Sans',sans-serif;
+  font-size:10px;font-weight:500;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;gap:4px;transition:all .15s;line-height:1.2}
+.xb:active{background:var(--card2)}
+.xb.danger{color:var(--coral)}
+
+/* ═══ INSIGHTS ═══ */
+.ins-row{display:flex;gap:6px;align-items:stretch;margin-bottom:9px}
+.ins-card{flex:1;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--rsm);padding:13px}
+.ins-v{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:var(--teal)}
+.ins-l{font-size:10px;color:var(--text2);margin-top:2px}
+
+/* ═══ CLIMATE CHIPS ═══ */
+.cc{padding:5px 12px;border-radius:11px;font-size:11px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg3);color:var(--text2);
+  transition:all .15s;font-family:'DM Sans',sans-serif;white-space:nowrap}
+.cc.on{background:var(--teal);color:#06101f;border-color:var(--teal);font-weight:600}
+
+/* ═══ STAR RATING ═══ */
+.star-row{display:flex;gap:6px}
+.star-btn{background:none;border:none;font-size:24px;cursor:pointer;padding:2px;
+  transition:transform .1s;line-height:1}
+.star-btn:active{transform:scale(1.15)}
+
+/* ═══ REVIEW CARD ═══ */
+.rcard{background:var(--card);border:1px solid var(--border);border-radius:var(--rsm);
+  padding:12px 13px;margin-bottom:8px}
+.rcard-l{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;
+  margin-bottom:5px}
+.rcard-v{font-size:13px;line-height:1.5;color:var(--text)}
+
+/* ═══ TOAST ═══ */
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(12px);
+  background:var(--card2);border:1px solid var(--border2);color:var(--text);
+  padding:10px 18px;border-radius:11px;font-size:12px;opacity:0;pointer-events:none;
+  transition:all .25s;z-index:900;white-space:nowrap;max-width:280px;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ═══ EMPTY ═══ */
+.empty{padding:36px 24px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:9px}
+.empty svg{opacity:.15}
+.empty h3{font-size:15px;color:var(--text2)}
+.empty p{font-size:12px;color:var(--text3)}
+
+/* ═══ DIVIDER ═══ */
+.div{height:1px;background:var(--border);margin:11px 0}
+.row{display:flex;gap:8px;align-items:center}
+.sp1{flex:1}
+.mt10{margin-top:10px}
+.mt14{margin-top:14px}
+
+/* ═══ LEAFLET OVERRIDES ═══ */
+.leaflet-container{font-family:'DM Sans',sans-serif!important}
+.leaflet-popup-content-wrapper{
+  background:var(--card)!important;color:var(--text)!important;
+  border:1px solid var(--border2)!important;border-radius:12px!important;
+  box-shadow:var(--shadow)!important;padding:0!important}
+.leaflet-popup-content{margin:13px 16px!important;font-family:'DM Sans',sans-serif!important;font-size:13px!important}
+.leaflet-popup-tip{background:var(--card)!important}
+.leaflet-popup-close-button{color:var(--text2)!important;font-size:16px!important;padding:6px 8px!important}
+.leaflet-control-zoom a{background:var(--card)!important;color:var(--text)!important;border-color:var(--border2)!important}
+.leaflet-control-zoom a:hover{background:var(--card2)!important}
+.leaflet-control-attribution{background:rgba(6,16,31,.75)!important;color:var(--text3)!important;font-size:9px!important}
+@media(prefers-color-scheme:light){.leaflet-control-attribution{background:rgba(240,244,250,.85)!important}}
+</style>
+</head>
+<body>
+
+<!-- ══════════ SCREEN: TRIPS ══════════ -->
+<div id="scr-trips" class="scr on">
+  <div class="scroll">
+    <div class="ph"><div class="ph-t">Voyage</div><div class="ph-s">Alle deine Reisen</div></div>
+    <div class="stiles" id="s-home"></div>
+    <div class="sbar">
+      <svg class="sbar-i" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="trip-q" placeholder="Reise suchen…" oninput="renderTrips()">
+    </div>
+    <div class="chips" id="trip-chips">
+      <div class="chip on" onclick="setTF(this,'all')">Alle</div>
+      <div class="chip" onclick="setTF(this,'planned')">Geplant</div>
+      <div class="chip" onclick="setTF(this,'done')">Archiv</div>
+      <div class="chip" onclick="setTF(this,'dream')">Bucket List</div>
+    </div>
+    <div class="slabel">REISEN</div>
+    <div id="trips-list" style="padding:0 20px"></div>
+  </div>
+</div>
+
+<!-- ══════════ SCREEN: MAP ══════════ -->
+<div id="scr-map" class="scr">
+  <div id="map-wrap">
+    <div id="leafmap"></div>
+    <div class="map-legend">
+      <div class="mleg"><div class="mleg-d" style="background:#3dd68c"></div>Besucht</div>
+      <div class="mleg"><div class="mleg-d" style="background:#d4a843"></div>Geplant</div>
+      <div class="mleg"><div class="mleg-d" style="background:#8b5cf6"></div>Wunschliste</div>
+    </div>
+    <div class="map-country-pill" id="map-pill"></div>
+    <div class="map-trip-panel" id="map-panel"></div>
+  </div>
+</div>
+
+<!-- ══════════ SCREEN: INSIGHTS ══════════ -->
+<div id="scr-insights" class="scr">
+  <div class="scroll">
+    <div class="ph"><div class="ph-t">Insights <em>&</em> Archiv</div><div class="ph-s">Deine Reise-Statistiken</div></div>
+    <div id="insights-body" style="padding:0 20px"></div>
+  </div>
+</div>
+
+<!-- ══════════ SCREEN: DOCS ══════════ -->
+<div id="scr-docs" class="scr">
+  <div class="scroll">
+    <div class="ph"><div class="ph-t">Doku<em>mente</em></div><div class="ph-s">Pässe, Visa, Tickets & mehr</div></div>
+    <div class="chips" id="doc-chips">
+      <div class="chip on" onclick="setDF(this,'all')">Alle</div>
+      <div class="chip" onclick="setDF(this,'Reisepass')">Pass</div>
+      <div class="chip" onclick="setDF(this,'Visum')">Visa</div>
+      <div class="chip" onclick="setDF(this,'Ticket')">Tickets</div>
+      <div class="chip" onclick="setDF(this,'Buchung')">Buchungen</div>
+      <div class="chip" onclick="setDF(this,'Versicherung')">Versicherung</div>
+    </div>
+    <div id="docs-list" style="padding:0 20px"></div>
+  </div>
+</div>
+
+<!-- ══════════ SCREEN: SETTINGS ══════════ -->
+<div id="scr-settings" class="scr">
+  <div class="scroll">
+    <div class="ph"><div class="ph-t">Einstel<em>lungen</em></div><div class="ph-s">Daten & App</div></div>
+    <div style="padding:0 20px;display:flex;flex-direction:column;gap:9px">
+      <button class="btn btn-g" onclick="exportAll()">📤 Alle Daten exportieren (JSON)</button>
+      <label class="btn btn-g" style="text-align:center;cursor:pointer;margin-top:0">
+        📥 Daten importieren (JSON)
+        <input type="file" accept=".json" style="display:none" onchange="importAll(this)">
+      </label>
+      <button class="btn btn-d" onclick="clearAll()">🗑 Alle Daten löschen</button>
+      <div class="card mt10" style="font-size:12px;color:var(--text2);line-height:1.9">
+        <strong style="color:var(--text);font-size:14px">Voyage · v3.0</strong><br>
+        PWA · Offline-fähig · GitHub Pages<br>
+        Alle Daten lokal gespeichert (localStorage)<br>
+        Filter & Einstellungen werden dauerhaft gespeichert<br>
+        Zum Homescreen hinzufügen für App-Erlebnis
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SCREEN: TRIP DETAIL ══════════ -->
+<div id="scr-detail" class="scr">
+  <div class="scroll">
+    <div class="dhero">
+      <button class="back" onclick="goBack()">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+        Zurück
+      </button>
+      <div class="dhero-flag" id="d-flag"></div>
+      <div class="dhero-t" id="d-title"></div>
+      <div class="dhero-s" id="d-sub"></div>
+    </div>
+    <div class="xbar">
+      <button class="xb" onclick="exportTripPDF()">📄 PDF</button>
+      <button class="xb" onclick="exportTripJSON()">⬇ JSON</button>
+      <button class="xb" onclick="editCurrentTrip()">✏️ Edit</button>
+      <button class="xb danger" onclick="deleteCurrentTrip()">🗑</button>
+    </div>
+    <div class="tabs">
+      <div class="tab on" onclick="switchTab('route')">📍 Route</div>
+      <div class="tab" onclick="switchTab('budget')">💶 Budget</div>
+      <div class="tab" onclick="switchTab('pack')">🎒 Packliste</div>
+      <div class="tab" onclick="switchTab('health')">💉 Gesundheit</div>
+      <div class="tab" onclick="switchTab('spots')">⭐ Spots</div>
+      <div class="tab" onclick="switchTab('media')">📸 Medien</div>
+      <div class="tab" onclick="switchTab('review')">📋 Bewertung</div>
+    </div>
+
+    <div id="tp-route" class="tp on">
+      <div class="shead"><span class="stitle">Stationen & Route</span><button class="addbtn" onclick="openStopDr()">+</button></div>
+      <div id="stops-list"></div>
+      <div id="trip-minimap-wrap" style="display:none;margin-top:12px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);margin-bottom:7px">ROUTE AUF KARTE</div>
+        <div id="trip-minimap" style="height:240px;border-radius:var(--r);overflow:hidden;border:1px solid var(--border)"></div>
+      </div>
+    </div>
+    <div id="tp-budget" class="tp">
+      <div id="budget-body"></div>
+      <div class="shead mt10"><span class="stitle">Weitere Kosten</span><button class="addbtn" onclick="openCostDr()">+</button></div>
+      <div id="costs-list"></div>
+    </div>
+    <div id="tp-pack" class="tp">
+      <div class="card" style="margin-bottom:12px">
+        <div class="row"><span class="stitle">Smarte Packliste</span><div class="sp1"></div><button class="addbtn" onclick="openPackDr()">+</button></div>
+        <div style="font-size:11px;color:var(--text2);margin-top:6px">Klima & Aktivitäten:</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px" id="cc-wrap">
+          <div class="cc" onclick="toggleCC(this,'tropical')">🌴 Tropisch</div>
+          <div class="cc" onclick="toggleCC(this,'cold')">❄️ Kalt</div>
+          <div class="cc" onclick="toggleCC(this,'beach')">🏖️ Strand</div>
+          <div class="cc" onclick="toggleCC(this,'hiking')">🥾 Wandern</div>
+          <div class="cc" onclick="toggleCC(this,'diving')">🤿 Tauchen</div>
+          <div class="cc" onclick="toggleCC(this,'city')">🏙️ Stadt</div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:10px">
+          <button class="bsm bsm-p" onclick="smartPack()" style="flex:1">✨ Smart laden</button>
+          <button class="bsm bsm-g" onclick="resetPack()">↩ Reset</button>
+        </div>
+      </div>
+      <div id="pack-list" class="clist"></div>
+    </div>
+    <div id="tp-health" class="tp">
+      <div class="shead"><span class="stitle">Impfungen</span><button class="addbtn" onclick="openVaccDr()">+</button></div>
+      <button class="bsm bsm-p" onclick="loadDefVacc()" style="margin-bottom:10px;width:100%">💉 Empfehlungen laden</button>
+      <div id="vacc-list"></div>
+      <div class="div"></div>
+      <div class="shead mt10"><span class="stitle">Reiseapotheke</span><button class="addbtn" onclick="openMedDr()">+</button></div>
+      <button class="bsm bsm-g" onclick="loadDefMeds()" style="margin-bottom:10px;width:100%">💊 Standard laden</button>
+      <div id="meds-list" class="clist"></div>
+    </div>
+    <div id="tp-spots" class="tp">
+      <div class="shead"><span class="stitle">Spots & Orte</span><button class="addbtn" onclick="openSpotDr()">+</button></div>
+      <div class="chips" style="padding:0 0 11px">
+        <div class="chip on" onclick="setSF(this,'all')">Alle</div>
+        <div class="chip" onclick="setSF(this,'sight')">Sehensw.</div>
+        <div class="chip" onclick="setSF(this,'food')">Restaurant</div>
+        <div class="chip" onclick="setSF(this,'stay')">Unterkunft</div>
+        <div class="chip" onclick="setSF(this,'activity')">Aktivität</div>
+      </div>
+      <div id="spots-list"></div>
+    </div>
+    <div id="tp-media" class="tp">
+      <div class="shead"><span class="stitle">Fotos & Erinnerungen</span></div>
+      <div class="pgrid" id="photo-grid"></div>
+      <div class="div"></div>
+      <div class="shead mt10"><span class="stitle">Dokumente dieser Reise</span><button class="addbtn" onclick="openDocDr()">+</button></div>
+      <div id="trip-docs-list"></div>
+    </div>
+    <div id="tp-review" class="tp">
+      <div id="review-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ NAV ══════════ -->
+<nav class="bnav">
+  <button class="nb on" id="nb-trips" onclick="nav('trips')">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Reisen
+  </button>
+  <button class="nb" id="nb-map" onclick="nav('map')">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>Karte
+  </button>
+  <button class="nb" id="nb-insights" onclick="nav('insights')">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Insights
+  </button>
+  <button class="nb" id="nb-docs" onclick="nav('docs')">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Dokumente
+  </button>
+  <button class="nb" id="nb-settings" onclick="nav('settings')">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Mehr
+  </button>
+</nav>
+<button class="fab" id="fab" onclick="fabClick()">+</button>
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════ DRAWERS ══════════════════════ -->
+
+<!-- TRIP -->
+<div class="ov" id="ov-trip" onclick="closeOv('trip')"><div class="dr" onclick="event.stopPropagation()">
+  <div class="dhandle"></div><div class="dr-title" id="trip-dr-t">Neue Reise</div>
+  <input type="hidden" id="et-id">
+  <div class="fg"><label class="fl">Name der Reise</label><input class="fi" id="et-name" placeholder="z.B. Thailand Backpacking 2025"></div>
+  <div class="frow">
+    <div class="fg"><label class="fl">Flag / Emoji</label><input class="fi" id="et-flag" placeholder="🇹🇭"></div>
+    <div class="fg"><label class="fl">Status</label><select class="fi" id="et-status">
+      <option value="planned">📅 Geplant</option>
+      <option value="done">✅ Archiv</option>
+      <option value="dream">⭐ Bucket List</option>
+    </select></div>
+  </div>
+  <div class="frow">
+    <div class="fg"><label class="fl">Von</label><input class="fi" type="date" id="et-from"></div>
+    <div class="fg"><label class="fl">Bis</label><input class="fi" type="date" id="et-to"></div>
+  </div>
+  <div class="frow">
+    <div class="fg"><label class="fl">Gesamtbudget (€)</label><input class="fi" type="number" id="et-budget" placeholder="2500"></div>
+    <div class="fg"><label class="fl">Tagesbudget (€)</label><input class="fi" type="number" id="et-dbudget" placeholder="80"></div>
+  </div>
+  <div class="fg"><label class="fl">Beschreibung / Route</label><input class="fi" id="et-desc" placeholder="z.B. Bangkok → Chiang Mai → Krabi"></div>
+  <div class="fg">
+    <label class="fl">Besuchte Länder (ISO-Codes, kommagetrennt)</label>
+    <input class="fi" id="et-countries" placeholder="TH,MM,LA  — wird automatisch auf der Karte angezeigt">
+    <div style="font-size:10px;color:var(--text3);margin-top:5px">
+      Beispiele: DE=Deutschland · TH=Thailand · PH=Philippinen · IS=Island · SE=Schweden · JP=Japan · AU=Australien
+    </div>
+  </div>
+  <button class="btn btn-p" onclick="saveTrip()">Speichern</button>
+  <button class="btn btn-g" onclick="closeOv('trip')">Abbrechen</button>
+</div></div>
+
+<!-- STOP -->
+<div class="ov" id="ov-stop" onclick="closeOv('stop')"><div class="dr" onclick="event.stopPropagation()">
+  <div class="dhandle"></div><div class="dr-title" id="stop-dr-t">Station hinzufügen</div>
+  <input type="hidden" id="es-id">
+  <div class="fg">
+    <label class="fl">Ort / Stadt</label>
+    <div style="display:flex;gap:8px">
+      <input class="fi" id="es-name" placeholder="z.B. Chiang Mai" style="flex:1" oninput="stopGeoHint()">
+      <button class="bsm bsm-p" onclick="geocodeStop()" id="geo-btn" style="white-space:nowrap;padding:0 12px">📍 Auto</button>
+    </div>
+    <div id="geo-status" style="font-size:10px;color:var(--text3);margin-top:4px"></div>
+  </div>
+  <div class="frow">
+    <div class="fg"><label class="fl">Aufenthalt (Tage)</label><input class="fi" type="number" id="es-days" placeholder="4"></div>
+    <div class="fg"><label class="fl">Anreise mit</label><select class="fi" id="es-transport">
+      <option value="">— Startpunkt —</option>
+      <option value="✈️ Flug">✈️ Flug</option>
+      <option value="🚌 Bus">🚌 Bus</option>
+      <option value="⛵ Fähre">⛵ Fähre</option>
+      <option value="🏍️ Motorrad">🏍️ Motorrad</option>
+      <option value="🚗 Auto">🚗 Auto</option>
+      <option value="🚂 Zug">🚂 Zug</option>
+      <option value="🚢 Schiff">🚢 Schiff</option>
+      <option value="🚶 Zu Fuß">🚶 Zu Fuß</option>
+    </select></div>
+  </div>
+  <div class="frow">
+    <div class="fg"><label class="fl">Transport (€)</label><input class="fi" type="number" id="es-tc" placeholder="60"></div>
+    <div class="fg"><label class="fl">Unterkunft (€/Nacht)</label><input class="fi" type="number" id="es-ac" placeholder="20"></div>
+  </div>
+  <div class="frow">
+    <div class="fg"><label class="fl">Essen (€/Tag)</label><input class="fi" type="number" id="es-fd" placeholder="12"></div>
+    <div class="fg"><label class="fl">Aktivitäten (€ ges.)</label><input class="fi" type="number" id="es-act" placeholder="40"></div>
+  </div>
+  <div class="fg"><label class="fl">Koordinaten lat,lon</label><input class="fi" id="es-coords" placeholder="18.7883,98.9853 — oder 📍 Auto drücken"></div>
+  <div class="fg"><label class="fl">Notizen & Tipps</label><textarea class="fi" id="es-notes" placeholder="Buchungen, Öffnungszeiten, Empfehlungen…"></textarea></div>
+  <button class="btn btn-p" onclick="saveStop()">Station speichern</button>
+  <button class="btn btn-d" id="stop-del-btn" style="display:none" onclick="delStopFromDr()">Station löschen</button>
+  <button class="btn btn-g" onclick="closeOv('stop')">Abbrechen</button>
+</div></div>
+
+<!-- COST -->
+<div class="ov" id="ov-cost" onclick="closeOv('cost')"><div class="dr" onclick="event.stopPropagation()">
+  <div class="dhandle"></div><div class="dr-title" id="cost-dr-t">Kostenpunkt</div>
+  <input type="hidden" id="ec-id">
+  <div class="fg"><label class="fl">Bezeichnung</label><input class="fi" id="ec-name" placeholder="z.B. Hinflug Frankfurt → Bangkok"></div>
+  <div class="frow">
+    <div class="fg"><label class="fl">Betrag (€)</label><input class="fi" type="number" id="ec-amt" placeholder="550"></div>
+    <div class="fg"><label class="fl">Kategorie</label><select class="fi" id="ec-cat">
+      <option value="Flug">✈️ Flug</option>
+      <option value="Unterkunft">🏠 Unterkunft</option>
+      <option value="Transport">🚌 Transport</option>
+      <option value="Essen">🍜 Essen</option>
+      <option value="Aktivitäten">🎒 Aktivitäten</option>
+      <option value="Versicherung">🛡️ Versicherung</option>
+      <option value="Sonstiges">📌 Sonstiges</option>
+    </select></div>
+  </div>
+  <button class="btn btn-p" onclick="saveCost()">Speichern</button>
+  <button class="btn btn-d" id="cost-del-btn" style="display:none" onclick="delCostFromDr()">Löschen</button>
+  <button class="btn btn-g" onclick="closeOv('cost')">Abbrechen</button>
+</div></div>
+
+<!-- PACK ITEM -->
+<div class="ov" id="ov-pack" onclick="closeOv('pack')"><div class="dr" onclick="event.stopPropagation()">
+  <div class="dhandle"></div><div class="dr-title">Packitem</div>
+  <div class="fg"><label class="fl">Bezeichnung</label><input class="fi" id="ep-name" placeholder="z.B. Moskitonetz"></div>
+  <div class="fg"><label class="fl">Kategorie</label><select class="fi" id="ep-cat">
+    <option value="Essentials">🔑 Essentials</option>
+    <option value="Dokumente">📄 Dokumente</option>
+    <option value="Kleidung">👕 Kleidung</option>
+    <option value="Hygiene">🧴 Hygiene</option>
+    <option value="Technik">📱 Technik</option>
+    <option value="Medikamente">💊 Medikamente</option>
+    <option value="Aktivitäten">🎒 Aktivitäten</option>
+    <option value="Sonstiges">📌 Sonstiges</option>
+  </select></div>
+  <button class="btn btn-p" onclick="savePackItem()">Hinzufügen</button>
+  <button class="btn btn-g" onclick="closeOv('pack')">Abbrechen</button>
+</div></div>
+
+<!-- VACCINE -->
+<div class="ov" id="ov-vacc" onclick="closeOv('vacc')"><div class="dr" onclick="event.stopPropagation()">
+  <div class="dhandle"></div><div class="dr-title">Impfung / Gesundheit</div>
+  <div class="fg"><label class="fl">Bezeichnung</label><input class="fi" id="ev-name" placeholder="z.B. Hepatitis A"></div>
+  <div class="frow">
+    <div class="fg"><label class="fl">Status</label><select class="fi" id="ev-status">
+      <option value="done">✅ Erledigt</option>
+      <option value="plan">📅 Termin geplant</option>
+      <option value="need">⚠️ Noch nötig</option>
+    </select></div>
+    <div class="fg"><label class="fl">Notiz / Termin</label><input class="fi" id="ev-note" placeholder="z.B. 15.06.25"></div>
+  </div>
+  <button class="btn btn-p" onclick="saveVacc()">Speichern</button>
+  <button class="btn btn-g" onclick="closeOv('vacc')">Abbrechen</button>
+</div></div>
+
+<!-- MED -->
+<div class="ov" id="ov-med" onclick="closeOv('med')"><div class="dr" onclick="event.stopPropagation()">
+  <div class="dhandle"></div><div class="dr-title">Apotheke Item</div>
+  <div class="fg"><label class="fl">Bezeichnung</label><input class="fi" id="em-name" placeholder="z.B. Ibuprofen"></div>
+  <div class="fg"><label class="fl">Dosierung / Menge / Hinweis</label><input class="fi" id="em-note" placeholder="z.B. 400mg, 20 Tabletten"></div>
+  <button class="btn btn-p" onclick="saveMed()">Hinzufügen</button>
+  <button class="btn btn-g" onclick="closeOv('med')">Abbrechen</button>
+</div></div>
+
+<!-- SPOT -->
+<div class="ov" id="ov-spot" onclick="closeOv('spot')"><div class="dr" onclick="event.stopPropagation()">
+  <div class="dhandle"></div><div class="dr-title" id="spot-dr-t">Spot hinzufügen</div>
+  <input type="hidden" id="esp-id">
+  <div class="fg"><label class="fl">Name</label><input class="fi" id="esp-name" placeholder="z.B. Doi Inthanon Nationalpark"></div>
+  <div class="frow">
+    <div class="fg"><label class="fl">Typ</label><select class="fi" id="esp-type">
+      <option value="sight">🏛️ Sehenswürdigkeit</option>
+      <option value="food">🍽️ Restaurant</option>
+      <option value="stay">🏨 Unterkunft</option>
+      <option value="activity">🎯 Aktivität</option>
+    </select></div>
+    <div class="fg"><label class="fl">Bewertung</label><select class="fi" id="esp-rating">
+      <option value="5">⭐⭐⭐⭐⭐</option>
+      <option value="4">⭐⭐⭐⭐</option>
+      <option value="3">⭐⭐⭐</option>
+      <option value="2">⭐⭐</option>
+      <option value="1">⭐</option>
+    </select></div>
+  </div>
+  <div class="fg"><label class="fl">Station / Ort</label><input class="fi" id="esp-stop" placeholder="z.B. Chiang Mai"></div>
+  <div class="fg"><label class="fl">Notiz</label><textarea class="fi" id="esp-note" placeholder="Tipps, Öffnungszeiten, Preise…"></textarea></div>
+  <div class="fg"><label class="fl">Würde ich wiedermachen?</label><select class="fi" id="esp-again">
+    <option value="yes">✅ Unbedingt</option>
+    <option value="maybe">🤔 Vielleicht</option>
+    <option value="no">❌ Einmal reicht</option>
+  </select></div>
+  <button class="btn btn-p" onclick="saveSpot()">Spot speichern</button>
+  <button class="btn btn-d" id="spot-del-btn" style="display:none" onclick="delSpotFromDr()">Löschen</button>
+  <button class="btn btn-g" onclick="closeOv('spot')">Abbrechen</button>
+</div></div>
+
+<!-- DOCUMENT -->
+<div class="ov" id="ov-doc" onclick="closeOv('doc')"><div class="dr" onclick="event.stopPropagation()">
+  <div class="dhandle"></div><div class="dr-title">Dokument</div>
+  <div class="fg"><label class="fl">Bezeichnung</label><input class="fi" id="ed-name" placeholder="z.B. Reisepass Daniel"></div>
+  <div class="frow">
+    <div class="fg"><label class="fl">Typ</label><select class="fi" id="ed-type">
+      <option value="Reisepass">🛂 Reisepass</option>
+      <option value="Visum">📋 Visum</option>
+      <option value="Ticket">✈️ Ticket</option>
+      <option value="Buchung">🏨 Buchung</option>
+      <option value="Versicherung">🛡️ Versicherung</option>
+      <option value="Sonstiges">📌 Sonstiges</option>
+    </select></div>
+    <div class="fg"><label class="fl">Ablaufdatum</label><input class="fi" type="date" id="ed-exp"></div>
+  </div>
+  <div class="fg"><label class="fl">Nummer / Referenz</label><input class="fi" id="ed-ref" placeholder="Dokument- oder Buchungsnummer"></div>
+  <div class="fg"><label class="fl">Zugehörige Reise (Name)</label><input class="fi" id="ed-trip" placeholder="z.B. Thailand 2025 — leer = global"></div>
+  <div class="fg"><label class="fl">Notiz</label><textarea class="fi" id="ed-note" placeholder="Weitere Infos…"></textarea></div>
+  <button class="btn btn-p" onclick="saveDoc()">Speichern</button>
+  <button class="btn btn-g" onclick="closeOv('doc')">Abbrechen</button>
+</div></div>
+
+<!-- REVIEW -->
+<div class="ov" id="ov-review" onclick="closeOv('review')"><div class="dr" onclick="event.stopPropagation()">
+  <div class="dhandle"></div><div class="dr-title">Reise bewerten</div>
+  <div class="fg">
+    <label class="fl">Gesamtbewertung</label>
+    <div class="star-row" id="star-row">
+      <button class="star-btn" onclick="setStars(1)">☆</button>
+      <button class="star-btn" onclick="setStars(2)">☆</button>
+      <button class="star-btn" onclick="setStars(3)">☆</button>
+      <button class="star-btn" onclick="setStars(4)">☆</button>
+      <button class="star-btn" onclick="setStars(5)">☆</button>
+    </div>
+  </div>
+  <div class="fg"><label class="fl">Highlight der Reise</label><input class="fi" id="er-high" placeholder="Das unvergesslichste Erlebnis…"></div>
+  <div class="fg"><label class="fl">Nächstes Mal anders</label><input class="fi" id="er-diff" placeholder="Was würde ich ändern?"></div>
+  <div class="fg"><label class="fl">Persönliche Notiz / Erinnerungen</label><textarea class="fi" id="er-note" placeholder="Stimmungen, Momente…"></textarea></div>
+  <div class="frow">
+    <div class="fg"><label class="fl">Würde ich wiedermachen?</label><select class="fi" id="er-again">
+      <option value="yes">✅ Ja, sofort!</option>
+      <option value="maybe">🤔 Vielleicht</option>
+      <option value="no">❌ Einmal reicht</option>
+    </select></div>
+    <div class="fg"><label class="fl">Tatsächl. Kosten (€)</label><input class="fi" type="number" id="er-actual" placeholder="2340"></div>
+  </div>
+  <button class="btn btn-p" onclick="saveReview()">Bewertung speichern</button>
+  <button class="btn btn-g" onclick="closeOv('review')">Abbrechen</button>
+</div></div>
+
+<!-- COUNTRY DETAIL (from map click) -->
+<div class="ov" id="ov-country" onclick="closeOv('country')"><div class="dr" onclick="event.stopPropagation()">
+  <div class="dhandle"></div>
+  <div class="dr-title" id="country-dr-title">Land</div>
+  <div id="country-dr-body"></div>
+  <button class="btn btn-g" onclick="closeOv('country')">Schließen</button>
+</div></div>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════════════════
+//  DATA & PERSISTENCE
+// ═══════════════════════════════════════════════════════
+const SK='voyage3_data';
+const PK='voyage3_prefs';
+
+function ld(){try{return JSON.parse(localStorage.getItem(SK))||{trips:[],docs:[],countries:[]}}catch{return{trips:[],docs:[],countries:[]}}}
+function sd(d){localStorage.setItem(SK,JSON.stringify(d))}
+function lp(){try{return JSON.parse(localStorage.getItem(PK))||{}}catch{return{}}}
+function sp(p){localStorage.setItem(PK,JSON.stringify(p))}
+function gid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function pf(v){return parseFloat(v)||0}
+function pi(v){return parseInt(v)||0}
+function fd(d){if(!d)return'';const[y,m,day]=d.split('-');return`${day}.${m}.${y}`}
+function fm(n){const v=pf(n);return'€'+(v%1===0?v.toFixed(0):v.toFixed(2))}
+
+let D=ld();
+let P=lp(); // persistent preferences
+let curTrip=null;
+let curStars=0;
+let climateSet=new Set();
+let spotFilter='all';
+let leafMap=null;
+let geoLayer=null;
+let geoData=null;
+
+// ═══════════════════════════════════════════════════════
+//  PREFERENCES (persistent)
+// ═══════════════════════════════════════════════════════
+function savePrefs(){sp(P)}
+
+// Trip filter
+let tripFilter=P.tripFilter||'all';
+let docFilter=P.docFilter||'all';
+
+// Restore chip state
+function restoreChips(){
+  // trips
+  document.querySelectorAll('#trip-chips .chip').forEach(c=>{
+    c.classList.toggle('on',c.onclick?.toString().includes(`'${tripFilter}'`)||false);
+  });
+  document.querySelectorAll('#trip-chips .chip').forEach(c=>{
+    const match=c.getAttribute('onclick')?.match(/'(\w+)'\)/);
+    if(match)c.classList.toggle('on',match[1]===tripFilter);
+  });
+  // docs
+  document.querySelectorAll('#doc-chips .chip').forEach(c=>{
+    const match=c.getAttribute('onclick')?.match(/'([^']+)'\)/);
+    if(match)c.classList.toggle('on',match[1]===docFilter);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════
+function nav(s){
+  document.querySelectorAll('.scr').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(x=>x.classList.remove('on'));
+  document.getElementById('scr-'+s).classList.add('on');
+  const nb=document.getElementById('nb-'+s);
+  if(nb)nb.classList.add('on');
+  // FAB behavior
+  const fab=document.getElementById('fab');
+  if(s==='trips'){fab.style.display='flex';fab.onclick=openNewTripDr}
+  else if(s==='docs'){fab.style.display='flex';fab.onclick=()=>openDocDr(null)}
+  else fab.style.display='none';
+  // Save current screen
+  P.lastScreen=s;savePrefs();
+  // Screen-specific init
+  if(s==='trips')renderTrips();
+  if(s==='map')initMap();
+  if(s==='insights')renderInsights();
+  if(s==='docs')renderDocs();
+}
+
+function fabClick(){} // overridden per-screen
+
+function goBack(){
+  P.lastScreen='trips';savePrefs();
+  nav('trips');
+}
+
+// ═══════════════════════════════════════════════════════
+//  TRIPS LIST
+// ═══════════════════════════════════════════════════════
+function setTF(el,f){
+  tripFilter=f;P.tripFilter=f;savePrefs();
+  document.querySelectorAll('#trip-chips .chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  renderTrips();
+}
+
+function getTripTotal(t){
+  let x=0;
+  (t.costs||[]).forEach(c=>x+=pf(c.amt));
+  (t.stops||[]).forEach(s=>x+=pf(s.tc)+pf(s.ac)*pi(s.days)+pf(s.fd)*pi(s.days)+pf(s.act));
+  return x;
+}
+
+function renderTrips(){
+  const q=(document.getElementById('trip-q')?.value||'').toLowerCase();
+  let trips=[...D.trips];
+  if(tripFilter!=='all')trips=trips.filter(t=>t.status===tripFilter);
+  if(q)trips=trips.filter(t=>(t.name+(t.desc||'')).toLowerCase().includes(q));
+  trips.sort((a,b)=>({planned:0,dream:1,done:2}[a.status]||0)-({planned:0,dream:1,done:2}[b.status]||0));
+
+  const el=document.getElementById('trips-list');
+  el.innerHTML=trips.length?trips.map(t=>{
+    const tot=getTripTotal(t);
+    const pct=t.budget?Math.min(100,Math.round(tot/t.budget*100)):0;
+    const sl={planned:'Geplant',done:'Archiv',dream:'Bucket List'};
+    const nights=(t.stops||[]).reduce((s,st)=>s+pi(st.days),0);
+    const r=t.review||{};
+    return`<div class="tcard" onclick="openDetail('${t.id}')">
+      <div class="tcard-top">
+        <div class="tcard-flag">${t.flag||'🌍'}</div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          <span class="sp sp-${t.status}">${sl[t.status]||t.status}</span>
+          ${r.stars?`<span style="font-size:12px">${'⭐'.repeat(r.stars)}</span>`:''}
+        </div>
+      </div>
+      <div class="tname">${t.name}</div>
+      <div class="tmeta">
+        ${t.dateFrom?`<span>📅 ${fd(t.dateFrom)}</span>`:''}
+        ${(t.stops||[]).length?`<span>📍 ${t.stops.length} Orte</span>`:''}
+        ${nights?`<span>🌙 ${nights} Nächte</span>`:''}
+        ${tot?`<span>💶 ${fm(tot)}</span>`:''}
+        ${(t.countries||[]).length?`<span>🗺 ${t.countries.join(', ')}</span>`:''}
+      </div>
+      ${t.budget?`<div class="bbar"><div class="bfill" style="width:${pct}%"></div></div>
+      <div class="blbl"><span>${fm(tot)}</span><span>${fm(t.budget)} Budget</span></div>`:''}
+    </div>`;
+  }).join(''):`<div class="empty">
+    <svg width="52" height="52" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    <h3>Noch keine Reisen</h3><p>Tippe + um loszulegen</p></div>`;
+
+  // Stats
+  const total=D.trips.length,plan=D.trips.filter(t=>t.status==='planned').length;
+  const visited=new Set(D.trips.flatMap(t=>t.countries||[])).size;
+  document.getElementById('s-home').innerHTML=`
+    <div class="stile"><div class="sv">${total}</div><div class="sl">Reisen</div></div>
+    <div class="stile"><div class="sv">${plan}</div><div class="sl">Geplant</div></div>
+    <div class="stile"><div class="sv">${visited}</div><div class="sl">Länder</div></div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  TRIP FORM
+// ═══════════════════════════════════════════════════════
+function openNewTripDr(){
+  document.getElementById('trip-dr-t').textContent='Neue Reise';
+  document.getElementById('et-id').value='';
+  ['et-name','et-flag','et-from','et-to','et-budget','et-dbudget','et-desc','et-countries'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('et-status').value='planned';
+  openOv('trip');
+}
+function editCurrentTrip(){
+  const t=D.trips.find(t=>t.id===curTrip);if(!t)return;
+  document.getElementById('trip-dr-t').textContent='Reise bearbeiten';
+  document.getElementById('et-id').value=t.id;
+  document.getElementById('et-name').value=t.name||'';
+  document.getElementById('et-flag').value=t.flag||'';
+  document.getElementById('et-status').value=t.status||'planned';
+  document.getElementById('et-from').value=t.dateFrom||'';
+  document.getElementById('et-to').value=t.dateTo||'';
+  document.getElementById('et-budget').value=t.budget||'';
+  document.getElementById('et-dbudget').value=t.dbudget||'';
+  document.getElementById('et-desc').value=t.desc||'';
+  document.getElementById('et-countries').value=(t.countries||[]).join(',');
+  openOv('trip');
+}
+function saveTrip(){
+  const name=document.getElementById('et-name').value.trim();
+  if(!name){toast('Name eingeben');return}
+  const eid=document.getElementById('et-id').value;
+  const countries=document.getElementById('et-countries').value
+    .split(',').map(s=>s.trim().toUpperCase()).filter(s=>s.length>=2);
+  const trip={
+    id:eid||gid(),name,
+    flag:document.getElementById('et-flag').value.trim()||'🌍',
+    status:document.getElementById('et-status').value,
+    dateFrom:document.getElementById('et-from').value,
+    dateTo:document.getElementById('et-to').value,
+    budget:document.getElementById('et-budget').value,
+    dbudget:document.getElementById('et-dbudget').value,
+    desc:document.getElementById('et-desc').value,
+    countries
+  };
+  if(eid){
+    const i=D.trips.findIndex(t=>t.id===eid);
+    D.trips[i]={...D.trips[i],...trip};
+    toast('Aktualisiert ✓');
+  } else {
+    trip.stops=[];trip.costs=[];trip.packlist=[];trip.vaccines=[];
+    trip.meds=[];trip.spots=[];trip.photos=[];trip.climates=[];
+    D.trips.unshift(trip);
+    toast('Reise angelegt ✓');
+  }
+  sd(D);closeOv('trip');renderTrips();
+  // refresh map layer if visible
+  if(geoLayer)refreshMapColors();
+}
+function deleteCurrentTrip(){
+  if(!confirm('Reise inkl. aller Daten löschen?'))return;
+  D.trips=D.trips.filter(t=>t.id!==curTrip);
+  sd(D);goBack();toast('Reise gelöscht');
+}
+
+// ═══════════════════════════════════════════════════════
+//  DETAIL SCREEN
+// ═══════════════════════════════════════════════════════
+function openDetail(id){
+  curTrip=id;
+  const t=D.trips.find(t=>t.id===id);if(!t)return;
+  P.lastOpenTrip=id;savePrefs();
+  document.getElementById('d-flag').textContent=t.flag||'🌍';
+  document.getElementById('d-title').textContent=t.name;
+  const days=t.dateFrom&&t.dateTo?Math.round((new Date(t.dateTo)-new Date(t.dateFrom))/86400000)+' Tage':'';
+  document.getElementById('d-sub').textContent=[t.desc,days].filter(Boolean).join(' · ');
+  // restore climate chips
+  climateSet=new Set(t.climates||[]);
+  document.querySelectorAll('#cc-wrap .cc').forEach(c=>{
+    const k=c.getAttribute('onclick').match(/'(\w+)'\)/)?.[1];
+    if(k)c.classList.toggle('on',climateSet.has(k));
+  });
+  // reset tabs
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('on',i===0));
+  document.querySelectorAll('.tp').forEach((p,i)=>p.classList.toggle('on',i===0));
+  // switch screen
+  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
+  document.getElementById('scr-detail').classList.add('on');
+  document.getElementById('fab').style.display='none';
+  renderStops(t);
+}
+
+// ═══════════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════════
+function switchTab(tab){
+  P.lastTab=tab;savePrefs();
+  const order=['route','budget','pack','health','spots','media','review'];
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('on',order[i]===tab));
+  document.querySelectorAll('.tp').forEach(p=>p.classList.remove('on'));
+  document.getElementById('tp-'+tab).classList.add('on');
+  // destroy minimap when leaving route tab
+  if(tab!=='route'&&tripMiniMap){tripMiniMap.remove();tripMiniMap=null}
+  const t=D.trips.find(t=>t.id===curTrip);if(!t)return;
+  if(tab==='route')renderStops(t);
+  if(tab==='budget')renderBudget(t);
+  if(tab==='pack')renderPack(t);
+  if(tab==='health')renderHealth(t);
+  if(tab==='spots')renderSpots(t);
+  if(tab==='media')renderMedia(t);
+  if(tab==='review')renderReview(t);
+}
+
+// ═══════════════════════════════════════════════════════
+//  STOPS / ROUTE
+// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+//  STOPS / ROUTE + GEOCODING + MINIMAP
+// ═══════════════════════════════════════════════════════
+let tripMiniMap=null;
+
+function renderStops(t){
+  const stops=t.stops||[];
+  const el=document.getElementById('stops-list');
+  if(!stops.length){
+    el.innerHTML=`<div class="empty" style="padding:20px 0"><svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg><h3>Keine Stationen</h3><p>+ drücken oder Namen eingeben → Auto-Koordinaten</p></div>`;
+    document.getElementById('trip-minimap-wrap').style.display='none';
+    return;
+  }
+  el.innerHTML=stops.map((s,i)=>{
+    const cost=pf(s.tc)+pf(s.ac)*pi(s.days)+pf(s.fd)*pi(s.days)+pf(s.act);
+    return`${i>0&&s.transport?`<div class="conn"><div class="conn-l"></div><span class="tbadge">${s.transport}${s.tc?' · '+fm(s.tc):''}</span></div>`:''}
+    <div class="stcard">
+      <div class="stcard-top"><div class="stcard-n">📍 ${s.name}</div><div class="stcard-d">${pi(s.days)||1} ${pi(s.days)===1?'Tag':'Tage'}</div></div>
+      ${cost?`<div class="stcard-cost">💶 ${fm(cost)}</div>`:''}
+      ${s.notes?`<div class="stcard-note">${s.notes}</div>`:''}
+      ${s.coords?`<div style="font-size:10px;color:var(--text3);margin-top:3px">📌 ${s.coords}</div>`:'<div style="font-size:10px;color:var(--coral);margin-top:3px">⚠ Keine Koordinaten — Bearbeiten für Karte</div>'}
+      <div style="margin-top:8px;display:flex;gap:6px">
+        <button class="bsm bsm-g" onclick="editStop('${s.id}')">✏️ Bearbeiten</button>
+        <button class="bsm bsm-d" onclick="delStop('${s.id}')">✕ Löschen</button>
+      </div>
+    </div>`;
+  }).join('');
+  // render minimap
+  renderTripMinimap(t);
+}
+
+function renderTripMinimap(t){
+  const stopsWithCoords=(t.stops||[]).filter(s=>s.coords&&s.coords.includes(','));
+  const wrap=document.getElementById('trip-minimap-wrap');
+  if(!stopsWithCoords.length){wrap.style.display='none';return}
+  wrap.style.display='block';
+  // destroy old map
+  if(tripMiniMap){tripMiniMap.remove();tripMiniMap=null}
+  setTimeout(()=>{
+    const dark=window.matchMedia('(prefers-color-scheme:dark)').matches;
+    tripMiniMap=L.map('trip-minimap',{zoomControl:false,attributionControl:false,dragging:true,scrollWheelZoom:false});
+    const tileUrl=dark
+      ?'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+      :'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+    L.tileLayer(tileUrl,{subdomains:'abcd',maxZoom:14}).addTo(tripMiniMap);
+
+    const pts=[];
+    stopsWithCoords.forEach((s,i)=>{
+      const[lat,lon]=s.coords.split(',').map(Number);
+      if(isNaN(lat))return;
+      pts.push([lat,lon]);
+      const col=t.status==='done'?'#3dd68c':t.status==='planned'?'#d4a843':'#8b5cf6';
+      const icon=L.divIcon({className:'',
+        html:`<div style="background:${col};color:#06101f;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,.4)">${i+1}</div>`,
+        iconSize:[22,22],iconAnchor:[11,11]});
+      L.marker([lat,lon],{icon}).addTo(tripMiniMap)
+        .bindPopup(`<strong>${s.name}</strong>${s.days?`<br>${s.days} Tage`:''}`,{maxWidth:140});
+    });
+
+    // Draw route line
+    if(pts.length>1){
+      L.polyline(pts,{color:'#d4a843',weight:2.5,opacity:.7,dashArray:'5,4'}).addTo(tripMiniMap);
+    }
+
+    if(pts.length===1){tripMiniMap.setView(pts[0],10)}
+    else if(pts.length>1){tripMiniMap.fitBounds(L.latLngBounds(pts),{padding:[24,24]})}
+  },80);
+}
+
+function openStopDr(editId){
+  const eid=editId||null;
+  document.getElementById('es-id').value=eid||'';
+  document.getElementById('stop-dr-t').textContent=eid?'Station bearbeiten':'Station hinzufügen';
+  document.getElementById('stop-del-btn').style.display=eid?'block':'none';
+  document.getElementById('geo-status').textContent='';
+  if(eid){
+    const t=D.trips.find(t=>t.id===curTrip);
+    const s=t.stops.find(s=>s.id===eid);
+    document.getElementById('es-name').value=s.name||'';
+    document.getElementById('es-days').value=s.days||'';
+    document.getElementById('es-transport').value=s.transport||'';
+    document.getElementById('es-tc').value=s.tc||'';
+    document.getElementById('es-ac').value=s.ac||'';
+    document.getElementById('es-fd').value=s.fd||'';
+    document.getElementById('es-act').value=s.act||'';
+    document.getElementById('es-coords').value=s.coords||'';
+    document.getElementById('es-notes').value=s.notes||'';
+  } else {
+    ['es-name','es-days','es-tc','es-ac','es-fd','es-act','es-coords','es-notes'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('es-transport').value='';
+  }
+  openOv('stop');
+}
+function editStop(id){openStopDr(id)}
+
+async function geocodeStop(){
+  const name=document.getElementById('es-name').value.trim();
+  if(!name){toast('Ortsname eingeben');return}
+  const btn=document.getElementById('geo-btn');
+  const status=document.getElementById('geo-status');
+  btn.textContent='⏳';btn.disabled=true;
+  status.textContent='Suche Koordinaten…';status.style.color='var(--text2)';
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name)}&format=json&limit=1`,
+      {headers:{'Accept-Language':'de','User-Agent':'VoyageApp/3.0'}});
+    const data=await r.json();
+    if(data.length){
+      const lat=parseFloat(data[0].lat).toFixed(5);
+      const lon=parseFloat(data[0].lon).toFixed(5);
+      document.getElementById('es-coords').value=`${lat},${lon}`;
+      status.textContent=`✅ Gefunden: ${data[0].display_name.split(',').slice(0,2).join(',')}`;
+      status.style.color='var(--green)';
+    }else{
+      status.textContent='❌ Nicht gefunden – Koordinaten manuell eingeben';
+      status.style.color='var(--coral)';
+    }
+  }catch{
+    status.textContent='⚠ Offline – Koordinaten manuell eingeben';
+    status.style.color='var(--gold2)';
+  }
+  btn.textContent='📍 Auto';btn.disabled=false;
+}
+
+function stopGeoHint(){
+  const status=document.getElementById('geo-status');
+  if(!document.getElementById('es-coords').value)
+    status.textContent='📍 Auto drücken für automatische Koordinaten';
+  else status.textContent='';
+  status.style.color='var(--text3)';
+}
+
+function saveStop(){
+  const name=document.getElementById('es-name').value.trim();if(!name){toast('Name eingeben');return}
+  const t=D.trips.find(t=>t.id===curTrip);if(!t.stops)t.stops=[];
+  const eid=document.getElementById('es-id').value;
+  const stopData={
+    name,
+    days:document.getElementById('es-days').value,
+    transport:document.getElementById('es-transport').value,
+    tc:document.getElementById('es-tc').value,
+    ac:document.getElementById('es-ac').value,
+    fd:document.getElementById('es-fd').value,
+    act:document.getElementById('es-act').value,
+    coords:document.getElementById('es-coords').value,
+    notes:document.getElementById('es-notes').value
+  };
+  if(eid){
+    const i=t.stops.findIndex(s=>s.id===eid);
+    if(i>=0)t.stops[i]={...t.stops[i],...stopData};
+    toast('Station aktualisiert ✓');
+  } else {
+    t.stops.push({id:gid(),...stopData});
+    toast('Station gespeichert ✓');
+  }
+  sd(D);closeOv('stop');renderStops(t);
+  if(geoLayer)refreshMapColors();
+}
+function delStop(id){
+  const t=D.trips.find(t=>t.id===curTrip);
+  t.stops=t.stops.filter(s=>s.id!==id);
+  sd(D);renderStops(t);
+  if(geoLayer)refreshMapColors();
+}
+function delStopFromDr(){
+  const id=document.getElementById('es-id').value;if(!id)return;
+  if(!confirm('Station löschen?'))return;
+  closeOv('stop');delStop(id);
+}
+
+// ═══════════════════════════════════════════════════════
+//  BUDGET — inkl. Quick-Gesamtbetrag für Archiv-Trips
+// ═══════════════════════════════════════════════════════
+const CAT_COL={Flug:'#d4a843',Unterkunft:'#3dd68c',Transport:'#5b9bd5',Essen:'#f0a500',Aktivitäten:'#8b5cf6',Versicherung:'#f06060',Sonstiges:'#7a94bc'};
+const CAT_ICO={Flug:'✈️',Unterkunft:'🏠',Transport:'🚌',Essen:'🍜',Aktivitäten:'🎒',Versicherung:'🛡️',Sonstiges:'📌'};
+
+function renderBudget(t){
+  let cats={},total=0;
+  (t.stops||[]).forEach(s=>{
+    const tr=pf(s.tc),ac=pf(s.ac)*pi(s.days),fd=pf(s.fd)*pi(s.days),at=pf(s.act);
+    cats.Transport=(cats.Transport||0)+tr;
+    cats.Unterkunft=(cats.Unterkunft||0)+ac;
+    cats.Essen=(cats.Essen||0)+fd;
+    cats.Aktivitäten=(cats.Aktivitäten||0)+at;
+    total+=tr+ac+fd+at;
+  });
+  (t.costs||[]).forEach(c=>{cats[c.cat]=(cats[c.cat]||0)+pf(c.amt);total+=pf(c.amt)});
+  const budget=pf(t.budget),dbudget=pf(t.dbudget);
+  const nights=(t.stops||[]).reduce((s,st)=>s+pi(st.days),0);
+  const cpd=nights?total/nights:0;
+  const pct=budget?Math.min(100,Math.round(total/budget*100)):0;
+  const remaining=budget-total;
+
+  // Quick actual cost from review
+  const actualCost=pf(t.review?.actual);
+
+  let forecastHtml='';
+  if(budget&&nights){
+    forecastHtml=`<div class="forecast"><div class="forecast-t">🔮 Budget-Analyse</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.9">
+        <div>Geplante Nächte: <strong style="color:var(--text)">${nights}</strong></div>
+        <div>Ø Kosten / Tag (geplant): <strong style="color:var(--text)">${fm(cpd)}</strong></div>
+        ${dbudget?`<div>Tagesbudget: <strong>${fm(dbudget)}</strong>${cpd>dbudget?` <span style="color:var(--coral)">▲ ${fm(cpd-dbudget)} über Budget</span>`:` <span style="color:var(--green)">✓ ${fm(dbudget-cpd)} Puffer</span>`}</div>`:''}
+        <div style="color:${pct>90?'var(--coral)':pct>70?'var(--gold2)':'var(--green)'}">
+          Budget: ${pct}% — ${remaining>=0?fm(remaining)+' verbleibend':fm(-remaining)+' überzogen'}
+        </div>
+        ${actualCost?`<div style="color:var(--teal)">✅ Tatsächliche Kosten: <strong>${fm(actualCost)}</strong></div>`:''}
+      </div>
+    </div>`;
+  }
+
+  // Quick-Betrag Box (für Archiv-Trips die keine Stationen haben)
+  const quickHtml=`<div class="card" style="margin-bottom:11px">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);margin-bottom:8px">⚡ Schnell-Eingabe</div>
+    <div class="frow">
+      <div><label class="fl">Tatsächl. Gesamtkosten (€)</label>
+        <input class="fi" type="number" id="quick-actual" value="${actualCost||''}" placeholder="z.B. 1840" oninput="saveQuickActual()">
+      </div>
+      <div><label class="fl">Budget (€)</label>
+        <input class="fi" type="number" id="quick-budget" value="${t.budget||''}" placeholder="z.B. 2000" oninput="saveQuickBudget()">
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:4px">Wird direkt gespeichert · Kein Speichern nötig</div>
+  </div>`;
+
+  document.getElementById('budget-body').innerHTML=quickHtml+forecastHtml+`<div class="bov">
+    <div style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Geplante Kosten (aus Stationen)</div>
+    <div class="btotal"><span class="btotal-sub">€</span>${total.toFixed(2)}</div>
+    ${actualCost?`<div style="font-size:13px;color:var(--teal);margin-top:2px">Tatsächlich: ${fm(actualCost)}</div>`:''}
+    ${nights?`<div style="font-size:11px;color:var(--text2);margin-top:4px">Ø ${fm(cpd)} / Tag · ${nights} Nächte</div>`:''}
+    ${budget?`<div style="margin-top:10px;font-size:11px;display:flex;justify-content:space-between;color:var(--text2)">
+      <span>Budget: ${fm(budget)}</span>
+      <span style="color:${pct>90?'var(--coral)':pct>70?'var(--gold2)':'var(--green)'};font-weight:600">${pct}%</span></div>
+    <div class="bbar" style="height:5px;margin-top:5px"><div class="bfill" style="width:${pct}%;background:${pct>90?'var(--coral)':pct>70?'var(--gold2)':'var(--green)'}"></div></div>`:''}
+    <div class="bcats">${Object.entries(cats).filter(([,v])=>v>0).map(([k,v])=>`
+      <div class="bcat-r"><div class="bcat-h"><span>${CAT_ICO[k]||'📌'} ${k}</span><span>${fm(v)}</span></div>
+      <div class="bbr"><div class="bbrf" style="width:${total?Math.round(v/total*100):0}%;background:${CAT_COL[k]||'#7a9'}"></div></div></div>
+    `).join('')}</div>
+  </div>`;
+
+  const costs=t.costs||[];
+  document.getElementById('costs-list').innerHTML=costs.length
+    ?costs.map(c=>`<div class="vitem"><div><div class="vitem-n">${c.name}</div><div class="vitem-sub">${c.cat}</div></div><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:700;color:var(--gold);font-size:13px">${fm(c.amt)}</span><button class="bsm bsm-g" onclick="editCost('${c.id}')">✏️</button><button class="bsm bsm-d" onclick="delCost('${c.id}')">✕</button></div></div>`)
+    .join(''):`<div style="font-size:12px;color:var(--text3);padding:8px 0">Noch keine manuellen Kostenpunkte</div>`;
+}
+
+function saveQuickActual(){
+  const t=D.trips.find(t=>t.id===curTrip);if(!t)return;
+  if(!t.review)t.review={};
+  t.review.actual=document.getElementById('quick-actual').value;
+  sd(D);
+}
+function saveQuickBudget(){
+  const t=D.trips.find(t=>t.id===curTrip);if(!t)return;
+  t.budget=document.getElementById('quick-budget').value;
+  sd(D);
+}
+
+function openCostDr(){
+  document.getElementById('cost-dr-t').textContent='Kostenpunkt';
+  document.getElementById('ec-id').value='';
+  ['ec-name','ec-amt'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('cost-del-btn').style.display='none';
+  openOv('cost');
+}
+function editCost(id){
+  const t=D.trips.find(t=>t.id===curTrip);
+  const c=t.costs.find(c=>c.id===id);if(!c)return;
+  document.getElementById('cost-dr-t').textContent='Kostenpunkt bearbeiten';
+  document.getElementById('ec-id').value=id;
+  document.getElementById('ec-name').value=c.name;
+  document.getElementById('ec-amt').value=c.amt;
+  document.getElementById('ec-cat').value=c.cat;
+  document.getElementById('cost-del-btn').style.display='block';
+  openOv('cost');
+}
+function saveCost(){
+  const name=document.getElementById('ec-name').value.trim();
+  const amt=document.getElementById('ec-amt').value;
+  if(!name||!amt){toast('Name + Betrag');return}
+  const t=D.trips.find(t=>t.id===curTrip);
+  if(!t.costs)t.costs=[];
+  const eid=document.getElementById('ec-id').value;
+  if(eid){
+    const i=t.costs.findIndex(c=>c.id===eid);
+    if(i>=0)t.costs[i]={...t.costs[i],name,amt,cat:document.getElementById('ec-cat').value};
+    toast('Aktualisiert ✓');
+  } else {
+    t.costs.push({id:gid(),name,amt,cat:document.getElementById('ec-cat').value});
+    toast('Gespeichert ✓');
+  }
+  sd(D);closeOv('cost');renderBudget(t);
+}
+function delCost(id){
+  const t=D.trips.find(t=>t.id===curTrip);
+  t.costs=t.costs.filter(c=>c.id!==id);sd(D);renderBudget(t);
+}
+function delCostFromDr(){
+  const id=document.getElementById('ec-id').value;if(!id)return;
+  closeOv('cost');delCost(id);
+}
+
+// ═══════════════════════════════════════════════════════
+//  SMART PACKLISTE
+// ═══════════════════════════════════════════════════════
+const PT={
+  base:[['Reisepass','Dokumente'],['Impfpass','Dokumente'],['Kreditkarte / Bargeld','Dokumente'],['Reisekrankenversicherung','Dokumente'],['Ladekabel + Adapter','Technik'],['Powerbank','Technik'],['Sonnenschutz SPF 50','Hygiene'],['Mückenspray','Hygiene'],['Zahnpflege','Hygiene'],['Erste-Hilfe-Set','Medikamente'],['T-Shirts (4x)','Kleidung'],['Unterwäsche (5x)','Kleidung'],['Packbeutel','Essentials'],['Kombischloss','Essentials'],['Kopfhörer','Technik']],
+  tropical:[['Regenjacke/Poncho','Kleidung'],['Moskitonetz','Essentials'],['Sonnenhut','Kleidung'],['Elektrolyte','Medikamente'],['Dehydrationsmittel','Medikamente']],
+  cold:[['Thermowäsche (2x)','Kleidung'],['Fleecejacke','Kleidung'],['Winterjacke','Kleidung'],['Handschuhe','Kleidung'],['Mütze','Kleidung'],['Wärme-Socken','Kleidung']],
+  beach:[['Badehose/-anzug','Kleidung'],['Flip Flops','Kleidung'],['Strandtuch','Aktivitäten'],['Wasserfeste Sonnencreme','Hygiene'],['Sonnenbrille','Essentials']],
+  hiking:[['Wanderschuhe','Aktivitäten'],['Wanderstöcke','Aktivitäten'],['Tagesrucksack','Essentials'],['Kompressionsstrümpfe','Medikamente'],['Blasenpflaster','Medikamente'],['Trinkflasche','Essentials']],
+  diving:[['Schnorchelmaske','Aktivitäten'],['Schnorchel + Flossen','Aktivitäten'],['Rash Guard','Kleidung'],['Unterwasserkamera','Technik'],['Tauchlizenz (Kopie)','Dokumente']],
+  city:[['Daypack','Essentials'],['Stadtschuhe','Kleidung'],['Offline-Karten (Maps.me)','Technik'],['Diebstahlsichere Tasche','Essentials']]
+};
+
+function toggleCC(el,key){
+  if(climateSet.has(key)){climateSet.delete(key);el.classList.remove('on')}
+  else{climateSet.add(key);el.classList.add('on')}
+  const t=D.trips.find(t=>t.id===curTrip);
+  if(t){t.climates=[...climateSet];sd(D)}
+}
+function smartPack(){
+  const t=D.trips.find(t=>t.id===curTrip);
+  if(!t.packlist)t.packlist=[];
+  const items=[...PT.base];
+  climateSet.forEach(k=>{if(PT[k])items.push(...PT[k])});
+  items.forEach(([name,cat])=>{
+    if(!t.packlist.find(i=>i.name===name))
+      t.packlist.push({id:gid(),name,cat,checked:false});
+  });
+  sd(D);renderPack(t);toast('Smart Packliste geladen ✓');
+}
+function renderPack(t){
+  const items=t.packlist||[];
+  const done=items.filter(i=>i.checked).length;
+  if(!items.length){document.getElementById('pack-list').innerHTML=`<div style="font-size:12px;color:var(--text3);padding:8px 0">Leer. Smart laden oder manuell hinzufügen.</div>`;return}
+  const byCat={};
+  items.forEach(i=>{if(!byCat[i.cat])byCat[i.cat]=[];byCat[i.cat].push(i)});
+  document.getElementById('pack-list').innerHTML=
+    `<div style="font-size:11px;color:var(--text2);margin-bottom:10px">${done}/${items.length} gepackt</div>`+
+    Object.entries(byCat).map(([cat,its])=>
+      `<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);margin:11px 0 6px">${cat}</div>`+
+      its.map(it=>`<div class="ci ${it.checked?'ck':''}" onclick="togglePack('${it.id}')">
+        <div class="ci-box">${it.checked?'<svg width="9" height="9" fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':''}</div>
+        <span class="ci-l">${it.name}</span>
+        <button class="bsm bsm-d" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();delPackItem('${it.id}')">✕</button>
+      </div>`).join('')
+    ).join('');
+}
+function openPackDr(){document.getElementById('ep-name').value='';openOv('pack')}
+function savePackItem(){
+  const name=document.getElementById('ep-name').value.trim();if(!name){toast('Name');return}
+  const t=D.trips.find(t=>t.id===curTrip);if(!t.packlist)t.packlist=[];
+  t.packlist.push({id:gid(),name,cat:document.getElementById('ep-cat').value,checked:false});
+  sd(D);closeOv('pack');renderPack(t);toast('Hinzugefügt ✓');
+}
+function togglePack(id){
+  const t=D.trips.find(t=>t.id===curTrip);
+  const i=t.packlist.find(i=>i.id===id);
+  if(i){i.checked=!i.checked;sd(D);renderPack(t)}
+}
+function delPackItem(id){
+  const t=D.trips.find(t=>t.id===curTrip);
+  t.packlist=t.packlist.filter(i=>i.id!==id);sd(D);renderPack(t);
+}
+function resetPack(){
+  const t=D.trips.find(t=>t.id===curTrip);
+  (t.packlist||[]).forEach(i=>i.checked=false);sd(D);renderPack(t);toast('Zurückgesetzt');
+}
+
+// ═══════════════════════════════════════════════════════
+//  HEALTH
+// ═══════════════════════════════════════════════════════
+const DEF_VACC=['Hepatitis A','Hepatitis B','Tetanus / Diphtherie','Typhus','Malaria-Prophylaxe','Dengue-Impfung','Tollwut','Gelbfieber'];
+const DEF_MEDS=[['Ibuprofen','400mg'],['Loperamid (Immodium)','Durchfall'],['Antihistaminikum','Allergien'],['Desinfektionsspray','Wunden'],['Pflaster-Set','Verband'],['Augentropfen',''],['Malaria-Tabletten','je nach Region'],['Thermometer',''],['Magnesium','Muskelkrämpfe']];
+
+function renderHealth(t){
+  const vs=t.vaccines||[];
+  const sm={done:'vp-ok',plan:'vp-pl',need:'vp-no'};
+  const sl={done:'Erledigt',plan:'Geplant',need:'Noch nötig'};
+  document.getElementById('vacc-list').innerHTML=vs.length
+    ?vs.map(v=>`<div class="vitem"><div><div class="vitem-n">${v.name}</div>${v.note?`<div class="vitem-sub">${v.note}</div>`:''}</div><div style="display:flex;align-items:center;gap:7px"><span class="vpill ${sm[v.status]||'vp-no'}">${sl[v.status]||v.status}</span><button class="bsm bsm-d" onclick="delVacc('${v.id}')">✕</button></div></div>`).join('')
+    :`<div style="font-size:12px;color:var(--text3);padding:6px 0">Leer.</div>`;
+
+  const ms=t.meds||[];
+  document.getElementById('meds-list').innerHTML=ms.length
+    ?ms.map(m=>`<div class="ci ${m.checked?'ck':''}" onclick="toggleMed('${m.id}')"><div class="ci-box">${m.checked?'<svg width="9" height="9" fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':''}</div><div style="flex:1"><div class="ci-l">${m.name}</div>${m.note?`<div class="ci-sub">${m.note}</div>`:''}</div><button class="bsm bsm-d" style="padding:2px 8px;font-size:10px" onclick="event.stopPropagation();delMed('${m.id}')">✕</button></div>`).join('')
+    :`<div style="font-size:12px;color:var(--text3);padding:6px 0">Leer.</div>`;
+}
+function openVaccDr(){['ev-name','ev-note'].forEach(i=>document.getElementById(i).value='');document.getElementById('ev-status').value='need';openOv('vacc')}
+function saveVacc(){
+  const name=document.getElementById('ev-name').value.trim();if(!name){toast('Name');return}
+  const t=D.trips.find(t=>t.id===curTrip);if(!t.vaccines)t.vaccines=[];
+  t.vaccines.push({id:gid(),name,status:document.getElementById('ev-status').value,note:document.getElementById('ev-note').value});
+  sd(D);closeOv('vacc');renderHealth(t);toast('Gespeichert ✓');
+}
+function delVacc(id){const t=D.trips.find(t=>t.id===curTrip);t.vaccines=t.vaccines.filter(v=>v.id!==id);sd(D);renderHealth(t)}
+function loadDefVacc(){
+  const t=D.trips.find(t=>t.id===curTrip);if(!t.vaccines)t.vaccines=[];
+  DEF_VACC.forEach(name=>{if(!t.vaccines.find(v=>v.name===name))t.vaccines.push({id:gid(),name,status:'need',note:''})});
+  sd(D);renderHealth(t);toast('Impfempfehlungen geladen ✓');
+}
+function openMedDr(){['em-name','em-note'].forEach(i=>document.getElementById(i).value='');openOv('med')}
+function saveMed(){
+  const name=document.getElementById('em-name').value.trim();if(!name){toast('Name');return}
+  const t=D.trips.find(t=>t.id===curTrip);if(!t.meds)t.meds=[];
+  t.meds.push({id:gid(),name,note:document.getElementById('em-note').value,checked:false});
+  sd(D);closeOv('med');renderHealth(t);toast('Hinzugefügt ✓');
+}
+function toggleMed(id){const t=D.trips.find(t=>t.id===curTrip);const m=t.meds.find(m=>m.id===id);if(m){m.checked=!m.checked;sd(D);renderHealth(t)}}
+function delMed(id){const t=D.trips.find(t=>t.id===curTrip);t.meds=t.meds.filter(m=>m.id!==id);sd(D);renderHealth(t)}
+function loadDefMeds(){
+  const t=D.trips.find(t=>t.id===curTrip);if(!t.meds)t.meds=[];
+  DEF_MEDS.forEach(([name,note])=>{if(!t.meds.find(m=>m.name===name))t.meds.push({id:gid(),name,note,checked:false})});
+  sd(D);renderHealth(t);toast('Apotheke geladen ✓');
+}
+
+// ═══════════════════════════════════════════════════════
+//  SPOTS
+// ═══════════════════════════════════════════════════════
+const SICO={sight:'🏛️',food:'🍽️',stay:'🏨',activity:'🎯'};
+const SAGAIN={yes:'✅ Unbedingt wieder',maybe:'🤔 Vielleicht',no:'❌ Einmal reicht'};
+
+function setSF(el,f){
+  spotFilter=f;
+  document.querySelectorAll('#tp-spots .chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  const t=D.trips.find(t=>t.id===curTrip);if(t)renderSpots(t);
+}
+function renderSpots(t){
+  let spots=t.spots||[];
+  if(spotFilter!=='all')spots=spots.filter(s=>s.type===spotFilter);
+  document.getElementById('spots-list').innerHTML=spots.length
+    ?spots.map(s=>`<div class="spot"><div class="spot-top"><div><div class="spot-n">${SICO[s.type]||'📍'} ${s.name}</div><div class="spot-type">${s.stop||''}</div></div><div style="text-align:right"><div class="stars">${'⭐'.repeat(pi(s.rating)||0)}</div><div style="font-size:10px;color:var(--text2);margin-top:1px">${SAGAIN[s.again]||''}</div></div></div>${s.note?`<div class="spot-note">${s.note}</div>`:''}<div style="margin-top:7px;display:flex;gap:6px"><button class="bsm bsm-g" onclick="editSpot('${s.id}')">✏️ Bearbeiten</button><button class="bsm bsm-d" onclick="delSpot('${s.id}')">✕</button></div></div>`).join('')
+    :`<div class="empty" style="padding:20px 0"><svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg><h3>Keine Spots</h3></div>`;
+}
+function openSpotDr(){
+  document.getElementById('spot-dr-t').textContent='Spot hinzufügen';
+  document.getElementById('esp-id').value='';
+  ['esp-name','esp-stop','esp-note'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('esp-rating').value='5';
+  document.getElementById('esp-again').value='yes';
+  document.getElementById('spot-del-btn').style.display='none';
+  openOv('spot');
+}
+function editSpot(id){
+  const t=D.trips.find(t=>t.id===curTrip);
+  const s=t.spots.find(s=>s.id===id);if(!s)return;
+  document.getElementById('spot-dr-t').textContent='Spot bearbeiten';
+  document.getElementById('esp-id').value=id;
+  document.getElementById('esp-name').value=s.name||'';
+  document.getElementById('esp-type').value=s.type||'sight';
+  document.getElementById('esp-rating').value=s.rating||'5';
+  document.getElementById('esp-stop').value=s.stop||'';
+  document.getElementById('esp-note').value=s.note||'';
+  document.getElementById('esp-again').value=s.again||'yes';
+  document.getElementById('spot-del-btn').style.display='block';
+  openOv('spot');
+}
+function saveSpot(){
+  const name=document.getElementById('esp-name').value.trim();if(!name){toast('Name');return}
+  const t=D.trips.find(t=>t.id===curTrip);if(!t.spots)t.spots=[];
+  const eid=document.getElementById('esp-id').value;
+  const spotData={name,type:document.getElementById('esp-type').value,rating:document.getElementById('esp-rating').value,stop:document.getElementById('esp-stop').value,note:document.getElementById('esp-note').value,again:document.getElementById('esp-again').value};
+  if(eid){
+    const i=t.spots.findIndex(s=>s.id===eid);
+    if(i>=0)t.spots[i]={...t.spots[i],...spotData};
+    toast('Spot aktualisiert ✓');
+  } else {
+    t.spots.push({id:gid(),...spotData});
+    toast('Spot gespeichert ✓');
+  }
+  sd(D);closeOv('spot');renderSpots(t);
+}
+function delSpot(id){const t=D.trips.find(t=>t.id===curTrip);t.spots=t.spots.filter(s=>s.id!==id);sd(D);renderSpots(t)}
+function delSpotFromDr(){
+  const id=document.getElementById('esp-id').value;if(!id)return;
+  if(!confirm('Spot löschen?'))return;
+  closeOv('spot');delSpot(id);
+}
+
+// ═══════════════════════════════════════════════════════
+//  MEDIA (Fotos + Reise-Dokumente)
+// ═══════════════════════════════════════════════════════
+function renderMedia(t){
+  const photos=t.photos||[];
+  const grid=document.getElementById('photo-grid');
+  grid.innerHTML=photos.map((p,i)=>`<div class="pthumb" onclick="removePhoto(${i})"><img src="${p}" alt="Foto ${i+1}"></div>`).join('')
+    +`<label class="pthumb pthumb-add">📷<input type="file" accept="image/*" onchange="addPhoto(this)" multiple></label>`;
+
+  // trip-linked docs
+  const tripDocs=(D.docs||[]).filter(d=>d.trip===t.name||d.trip===t.id);
+  document.getElementById('trip-docs-list').innerHTML=tripDocs.length
+    ?tripDocs.map(d=>renderDocCard(d)).join('')
+    :`<div style="font-size:12px;color:var(--text3);padding:8px 0">Keine Dokumente für diese Reise. + drücken oder im Dokumente-Tab anlegen und Reisename eintragen.</div>`;
+}
+
+function addPhoto(input){
+  const t=D.trips.find(t=>t.id===curTrip);
+  if(!t.photos)t.photos=[];
+  const files=Array.from(input.files);
+  let loaded=0;
+  files.forEach(file=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      t.photos.push(e.target.result);
+      loaded++;
+      if(loaded===files.length){sd(D);renderMedia(t);toast(`${files.length} Foto(s) hinzugefügt ✓`)}
+    };
+    r.readAsDataURL(file);
+  });
+}
+function removePhoto(idx){
+  if(!confirm('Foto löschen?'))return;
+  const t=D.trips.find(t=>t.id===curTrip);
+  t.photos.splice(idx,1);sd(D);renderMedia(t);
+}
+
+// ═══════════════════════════════════════════════════════
+//  REVIEW
+// ═══════════════════════════════════════════════════════
+function setStars(n){
+  curStars=n;
+  document.querySelectorAll('#star-row .star-btn').forEach((b,i)=>b.textContent=i<n?'⭐':'☆');
+}
+function renderReview(t){
+  const r=t.review||{};
+  const actual=pf(r.actual)||getTripTotal(t);
+  const nights=(t.stops||[]).reduce((s,st)=>s+pi(st.days),0);
+  const cpd=nights?actual/nights:0;
+  document.getElementById('review-body').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <span class="stitle">Reise-Bewertung</span>
+      <button class="bsm bsm-p" onclick="openReviewDr()">✏️ Bearbeiten</button>
+    </div>
+    ${r.stars?`<div style="font-size:26px;margin-bottom:10px">${'⭐'.repeat(r.stars)}</div>`:'<div style="font-size:12px;color:var(--text3);margin-bottom:10px">Noch nicht bewertet.</div>'}
+    <div class="stiles2" style="margin-bottom:12px">
+      <div class="stile2 accent"><div class="sv2">${fm(actual)}</div><div class="sl2">Tatsächliche Kosten</div></div>
+      <div class="stile2"><div class="sv2">${fm(cpd)}</div><div class="sl2">Ø pro Tag</div></div>
+    </div>
+    ${r.high?`<div class="rcard"><div class="rcard-l" style="color:var(--gold)">🌟 Highlight</div><div class="rcard-v">${r.high}</div></div>`:''} 
+    ${r.diff?`<div class="rcard"><div class="rcard-l" style="color:var(--teal)">💡 Nächstes Mal</div><div class="rcard-v">${r.diff}</div></div>`:''}
+    ${r.note?`<div class="rcard"><div class="rcard-l" style="color:var(--text2)">📔 Persönliche Notiz</div><div class="rcard-v" style="color:var(--text2)">${r.note}</div></div>`:''}
+    ${r.again?`<div style="font-size:12px;color:var(--text2);margin-top:8px">Wieder? <strong style="color:var(--text)">${{yes:'✅ Ja, sofort!',maybe:'🤔 Vielleicht',no:'❌ Einmal reicht'}[r.again]||r.again}</strong></div>`:''}`;
+}
+function openReviewDr(){
+  const t=D.trips.find(t=>t.id===curTrip);const r=t.review||{};
+  curStars=r.stars||0;setStars(curStars);
+  document.getElementById('er-high').value=r.high||'';
+  document.getElementById('er-diff').value=r.diff||'';
+  document.getElementById('er-note').value=r.note||'';
+  document.getElementById('er-again').value=r.again||'yes';
+  document.getElementById('er-actual').value=r.actual||'';
+  openOv('review');
+}
+function saveReview(){
+  const t=D.trips.find(t=>t.id===curTrip);
+  t.review={stars:curStars,high:document.getElementById('er-high').value,diff:document.getElementById('er-diff').value,note:document.getElementById('er-note').value,again:document.getElementById('er-again').value,actual:document.getElementById('er-actual').value};
+  sd(D);closeOv('review');renderReview(t);toast('Bewertung gespeichert ✓');
+}
+
+// ═══════════════════════════════════════════════════════
+//  LEAFLET MAP — vollständig verknüpft mit Trips
+// ═══════════════════════════════════════════════════════
+const ISO_NAME={
+  'AF':'Afghanistan','AL':'Albanien','DZ':'Algerien','AD':'Andorra','AO':'Angola',
+  'AG':'Antigua','AR':'Argentinien','AM':'Armenien','AU':'Australien','AT':'Österreich',
+  'AZ':'Aserbaidschan','BS':'Bahamas','BH':'Bahrain','BD':'Bangladesch','BB':'Barbados',
+  'BY':'Weißrussland','BE':'Belgien','BZ':'Belize','BJ':'Benin','BT':'Bhutan',
+  'BO':'Bolivien','BA':'Bosnien','BW':'Botswana','BR':'Brasilien','BN':'Brunei',
+  'BG':'Bulgarien','BF':'Burkina Faso','BI':'Burundi','CV':'Kap Verde','KH':'Kambodscha',
+  'CM':'Kamerun','CA':'Kanada','CF':'Zentralafrika','TD':'Tschad','CL':'Chile',
+  'CN':'China','CO':'Kolumbien','KM':'Komoren','CG':'Kongo','CR':'Costa Rica',
+  'HR':'Kroatien','CU':'Kuba','CY':'Zypern','CZ':'Tschechien','DK':'Dänemark',
+  'DJ':'Dschibuti','DM':'Dominica','DO':'Dominikan. Rep.','EC':'Ecuador','EG':'Ägypten',
+  'SV':'El Salvador','GQ':'Äquatorialguinea','ER':'Eritrea','EE':'Estland','SZ':'Eswatini',
+  'ET':'Äthiopien','FJ':'Fidschi','FI':'Finnland','FR':'Frankreich','GA':'Gabun',
+  'GM':'Gambia','GE':'Georgien','DE':'Deutschland','GH':'Ghana','GR':'Griechenland',
+  'GD':'Grenada','GT':'Guatemala','GN':'Guinea','GW':'Guinea-Bissau','GY':'Guyana',
+  'HT':'Haiti','HN':'Honduras','HU':'Ungarn','IS':'Island','IN':'Indien',
+  'ID':'Indonesien','IR':'Iran','IQ':'Irak','IE':'Irland','IL':'Israel',
+  'IT':'Italien','JM':'Jamaika','JP':'Japan','JO':'Jordanien','KZ':'Kasachstan',
+  'KE':'Kenia','KI':'Kiribati','KW':'Kuwait','KG':'Kirgistan','LA':'Laos',
+  'LV':'Lettland','LB':'Libanon','LS':'Lesotho','LR':'Liberia','LY':'Libyen',
+  'LI':'Liechtenstein','LT':'Litauen','LU':'Luxemburg','MG':'Madagaskar','MW':'Malawi',
+  'MY':'Malaysia','MV':'Malediven','ML':'Mali','MT':'Malta','MH':'Marshallinseln',
+  'MR':'Mauretanien','MU':'Mauritius','MX':'Mexiko','FM':'Mikronesien','MD':'Moldau',
+  'MC':'Monaco','MN':'Mongolei','ME':'Montenegro','MA':'Marokko','MZ':'Mosambik',
+  'MM':'Myanmar','NA':'Namibia','NR':'Nauru','NP':'Nepal','NL':'Niederlande',
+  'NZ':'Neuseeland','NI':'Nicaragua','NE':'Niger','NG':'Nigeria','NO':'Norwegen',
+  'OM':'Oman','PK':'Pakistan','PW':'Palau','PA':'Panama','PG':'Papua-Neuguinea',
+  'PY':'Paraguay','PE':'Peru','PH':'Philippinen','PL':'Polen','PT':'Portugal',
+  'QA':'Katar','RO':'Rumänien','RU':'Russland','RW':'Ruanda','KN':'St. Kitts',
+  'LC':'St. Lucia','VC':'St. Vincent','WS':'Samoa','SM':'San Marino','ST':'São Tomé',
+  'SA':'Saudi-Arabien','SN':'Senegal','RS':'Serbien','SC':'Seychellen','SL':'Sierra Leone',
+  'SG':'Singapur','SK':'Slowakei','SI':'Slowenien','SB':'Salomonen','SO':'Somalia',
+  'ZA':'Südafrika','SS':'Südsudan','ES':'Spanien','LK':'Sri Lanka','SD':'Sudan',
+  'SR':'Suriname','SE':'Schweden','CH':'Schweiz','SY':'Syrien','TW':'Taiwan',
+  'TJ':'Tadschikistan','TZ':'Tansania','TH':'Thailand','TL':'Timor-Leste','TG':'Togo',
+  'TO':'Tonga','TT':'Trinidad','TN':'Tunesien','TR':'Türkei','TM':'Turkmenistan',
+  'TV':'Tuvalu','UG':'Uganda','UA':'Ukraine','AE':'Ver. Arab. Emirate','GB':'Großbritannien',
+  'US':'USA','UY':'Uruguay','UZ':'Usbekistan','VU':'Vanuatu','VE':'Venezuela',
+  'VN':'Vietnam','YE':'Jemen','ZM':'Sambia','ZW':'Simbabwe'
+};
+
+function buildCountryMap(){
+  // iso -> {visited:[trips], planned:[trips], wishlist:[trips]}
+  const cm={};
+  D.trips.forEach(t=>{
+    const status=t.status==='done'?'visited':t.status==='planned'?'planned':'wishlist';
+    (t.countries||[]).forEach(iso=>{
+      if(!cm[iso])cm[iso]={visited:[],planned:[],wishlist:[]};
+      if(!cm[iso][status])cm[iso][status]=[];
+      cm[iso][status].push(t);
+    });
+  });
+  return cm;
+}
+
+async function loadGeoJSON(){
+  if(geoData)return geoData;
+  try{
+    const r=await fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson');
+    if(!r.ok)throw new Error();
+    geoData=await r.json();
+    return geoData;
+  }catch{return null}
+}
+
+function isDark(){return window.matchMedia('(prefers-color-scheme:dark)').matches}
+
+async function initMap(){
+  if(leafMap){refreshMapColors();return}
+  // Init Leaflet
+  leafMap=L.map('leafmap',{
+    center:[20,12],zoom:2,minZoom:1,maxZoom:8,
+    zoomControl:true,attributionControl:true
+  });
+  applyTiles();
+  const geo=await loadGeoJSON();
+  if(geo)buildGeoLayer(geo);
+}
+
+function applyTiles(){
+  if(!leafMap)return;
+  leafMap.eachLayer(l=>{if(l._url||l._tiles)leafMap.removeLayer(l)});
+  if(isDark()){
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',
+      {subdomains:'abcd',maxZoom:8,attribution:'© CARTO'}).addTo(leafMap);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',
+      {subdomains:'abcd',maxZoom:8,pane:'overlayPane'}).addTo(leafMap);
+  }else{
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
+      {subdomains:'abcd',maxZoom:8,attribution:'© CARTO'}).addTo(leafMap);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png',
+      {subdomains:'abcd',maxZoom:8,pane:'overlayPane'}).addTo(leafMap);
+  }
+}
+
+function buildGeoLayer(geo){
+  if(geoLayer){leafMap.removeLayer(geoLayer);geoLayer=null}
+  const cm=buildCountryMap();
+  const dark=isDark();
+
+  geoLayer=L.geoJSON(geo,{
+    style:feature=>{
+      const iso=(feature.properties.ISO_A2||'').toUpperCase();
+      const c=cm[iso];
+      if(c?.visited?.length)  return{fillColor:'#3dd68c',color:'rgba(61,214,140,.5)',weight:1.2,fillOpacity:.65};
+      if(c?.planned?.length)  return{fillColor:'#d4a843',color:'rgba(212,168,67,.5)',weight:1.2,fillOpacity:.6};
+      if(c?.wishlist?.length) return{fillColor:'#8b5cf6',color:'rgba(139,92,246,.4)',weight:1.2,fillOpacity:.55};
+      return{fillColor:dark?'#1a2d4f':'#d8e4f0',color:dark?'rgba(255,255,255,.08)':'rgba(0,0,0,.1)',weight:.4,fillOpacity:.5};
+    },
+    onEachFeature:(feature,layer)=>{
+      const iso=(feature.properties.ISO_A2||'').toUpperCase();
+      const name=feature.properties.ADMIN||feature.properties.name||ISO_NAME[iso]||iso;
+      const c=cm[iso];
+      const hasTrips=c&&(c.visited.length||c.planned.length||c.wishlist.length);
+
+      // hover pill
+      layer.on('mouseover',e=>{
+        const pill=document.getElementById('map-pill');
+        const status=c?.visited?.length?'✅ Besucht':c?.planned?.length?'📅 Geplant':c?.wishlist?.length?'⭐ Bucket List':'';
+        pill.textContent=name+(status?' — '+status:'');
+        pill.classList.add('show');
+        if(hasTrips)layer.setStyle({fillOpacity:.9,weight:2});
+      });
+      layer.on('mouseout',()=>{
+        document.getElementById('map-pill').classList.remove('show');
+        if(geoLayer)geoLayer.resetStyle(layer);
+      });
+
+      // click → open country detail drawer
+      layer.on('click',()=>{
+        showCountryDetail(iso,name,c);
+      });
+    }
+  }).addTo(leafMap);
+
+  // Add stop markers for trips with coords
+  addStopMarkers();
+}
+
+function addStopMarkers(){
+  // Remove existing markers
+  if(leafMap._stopMarkers){
+    leafMap._stopMarkers.forEach(m=>leafMap.removeLayer(m));
+  }
+  leafMap._stopMarkers=[];
+
+  D.trips.forEach(t=>{
+    (t.stops||[]).filter(s=>s.coords).forEach(s=>{
+      const parts=s.coords.split(',').map(Number);
+      if(parts.length<2||isNaN(parts[0]))return;
+      const color=t.status==='done'?'#3dd68c':t.status==='planned'?'#d4a843':'#8b5cf6';
+      const icon=L.divIcon({
+        className:'',
+        html:`<div style="width:10px;height:10px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,.8);box-shadow:0 2px 6px rgba(0,0,0,.4)"></div>`,
+        iconSize:[10,10],iconAnchor:[5,5]
+      });
+      const marker=L.marker([parts[0],parts[1]],{icon})
+        .addTo(leafMap)
+        .bindPopup(`<strong>${s.name}</strong><br><span style="color:#8aa0c0;font-size:11px">${t.flag||'🌍'} ${t.name}</span>${s.days?`<br><span style="font-size:11px">🌙 ${s.days} Tage</span>`:''}`,{maxWidth:180});
+      marker.on('click',()=>marker.openPopup());
+      leafMap._stopMarkers.push(marker);
+    });
+  });
+}
+
+function refreshMapColors(){
+  if(!geoLayer||!geoData)return;
+  buildGeoLayer(geoData);
+}
+
+function showCountryDetail(iso,name,cm){
+  document.getElementById('country-dr-title').textContent=`${ISO_NAME[iso]||name} (${iso})`;
+  const allTrips=[...(cm?.visited||[]),...(cm?.planned||[]),...(cm?.wishlist||[])];
+  if(!allTrips.length){
+    document.getElementById('country-dr-body').innerHTML=`<div style="font-size:13px;color:var(--text2);padding:8px 0">Noch keine Reise mit diesem Land verknüpft.<br><br>Tipp: Beim Anlegen einer Reise ISO-Codes eintragen (z.B. <strong>${iso}</strong>).</div>`;
+    openOv('country');return;
+  }
+  document.getElementById('country-dr-body').innerHTML=
+    `<div style="font-size:11px;color:var(--text2);margin-bottom:12px">${allTrips.length} Reise(n) mit ${ISO_NAME[iso]||name} verknüpft</div>`+
+    allTrips.map(t=>{
+      const tot=getTripTotal(t);const r=t.review||{};
+      const nights=(t.stops||[]).reduce((s,st)=>s+pi(st.days),0);
+      const sl={planned:'Geplant',done:'Archiv',dream:'Bucket List'};
+      return`<div class="tcard" style="margin-bottom:9px" onclick="closeOv('country');openDetail('${t.id}')">
+        <div class="tcard-top"><div class="tcard-flag">${t.flag||'🌍'}</div><span class="sp sp-${t.status}">${sl[t.status]||t.status}</span></div>
+        <div class="tname">${t.name}</div>
+        <div class="tmeta">
+          ${t.dateFrom?`<span>📅 ${fd(t.dateFrom)}</span>`:''}
+          ${nights?`<span>🌙 ${nights} N</span>`:''}
+          ${tot?`<span>💶 ${fm(tot)}</span>`:''}
+          ${r.stars?`<span>${'⭐'.repeat(r.stars)}</span>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  openOv('country');
+}
+
+// System theme watcher → update map tiles
+window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{
+  applyTiles();
+  if(geoData)buildGeoLayer(geoData);
+});
+
+// ═══════════════════════════════════════════════════════
+//  INSIGHTS
+// ═══════════════════════════════════════════════════════
+function renderInsights(){
+  const trips=D.trips,done=trips.filter(t=>t.status==='done');
+  const costs=done.map(t=>{const r=t.review||{};return r.actual?pf(r.actual):getTripTotal(t)});
+  const totalSpent=costs.reduce((s,v)=>s+v,0);
+  const totalNights=done.reduce((s,t)=>s+(t.stops||[]).reduce((ss,st)=>ss+pi(st.days),0),0);
+  const cpd=totalNights?totalSpent/totalNights:0;
+  const rated=done.filter(t=>t.review?.stars);
+  const avgRating=rated.length?rated.reduce((s,t)=>s+t.review.stars,0)/rated.length:0;
+  const countrySet=new Set(trips.flatMap(t=>t.countries||[]));
+
+  let mostExp=null,leastExp=null;
+  done.forEach((t,i)=>{
+    if(!mostExp||costs[i]>costs[done.indexOf(mostExp)])mostExp=t;
+    if(!leastExp||costs[i]<costs[done.indexOf(leastExp)])leastExp=t;
+  });
+
+  const countryFreq={};
+  trips.forEach(t=>(t.countries||[]).forEach(c=>{countryFreq[c]=(countryFreq[c]||0)+1}));
+  const topC=Object.entries(countryFreq).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  document.getElementById('insights-body').innerHTML=`
+    <div class="stiles2">
+      <div class="stile2 accent"><div class="sv2">${done.length}</div><div class="sl2">Abgeschlossene Trips</div></div>
+      <div class="stile2 accent"><div class="sv2">${fm(totalSpent)}</div><div class="sl2">Gesamtausgaben</div></div>
+      <div class="stile2"><div class="sv2">${fm(cpd)}</div><div class="sl2">Ø Kosten / Tag</div></div>
+      <div class="stile2"><div class="sv2">${totalNights}</div><div class="sl2">Nächte gesamt</div></div>
+      <div class="stile2"><div class="sv2">${countrySet.size}</div><div class="sl2">Länder gesamt</div></div>
+      ${avgRating?`<div class="stile2"><div class="sv2">${'⭐'.repeat(Math.round(avgRating))}</div><div class="sl2">Ø Bewertung (${avgRating.toFixed(1)})</div></div>`:''}
+    </div>
+    ${mostExp?`<div class="ins-card" style="margin-bottom:9px;background:var(--card);border:1px solid var(--border);border-radius:var(--rsm);padding:13px"><div style="font-size:9px;color:var(--teal);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">💰 Teuerste Reise</div><div style="font-size:15px;font-weight:700;cursor:pointer" onclick="openDetail('${mostExp.id}')">${mostExp.flag||'🌍'} ${mostExp.name}</div><div class="ins-v">${fm(costs[done.indexOf(mostExp)])}</div></div>`:''}
+    ${leastExp&&leastExp.id!==mostExp?.id?`<div class="ins-card" style="margin-bottom:9px;background:var(--card);border:1px solid var(--border);border-radius:var(--rsm);padding:13px"><div style="font-size:9px;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">🎯 Günstigste Reise</div><div style="font-size:15px;font-weight:700;cursor:pointer" onclick="openDetail('${leastExp.id}')">${leastExp.flag||'🌍'} ${leastExp.name}</div><div class="ins-v" style="color:var(--green)">${fm(costs[done.indexOf(leastExp)])}</div></div>`:''}
+    ${topC.length?`<div class="slabel" style="padding:4px 0 8px">MEISTBESUCHTE LÄNDER</div>
+    <div class="card" style="margin-bottom:14px">${topC.map(([c,n])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-size:13px">${ISO_NAME[c]||c} <span style="font-size:10px;color:var(--text3)">(${c})</span></span><span style="font-size:13px;color:var(--gold);font-weight:700">${n}×</span></div>`).join('')}</div>`:''}
+    <div class="slabel" style="padding:4px 0 8px">REISE-ARCHIV</div>
+    ${done.length?done.map((t,i)=>{
+      const r=t.review||{};const nights=(t.stops||[]).reduce((s,st)=>s+pi(st.days),0);
+      return`<div class="tcard" onclick="openDetail('${t.id}')">
+        <div class="tcard-top"><div class="tcard-flag">${t.flag||'🌍'}</div>${r.stars?`<div style="font-size:13px">${'⭐'.repeat(r.stars)}</div>`:''}</div>
+        <div class="tname">${t.name}</div>
+        <div class="tmeta">
+          ${t.dateFrom?`<span>📅 ${fd(t.dateFrom)}</span>`:''}
+          ${nights?`<span>🌙 ${nights} N</span>`:''}
+          <span>💶 ${fm(costs[i])}</span>
+          ${nights&&costs[i]?`<span>📊 ${fm(costs[i]/nights)}/Tag</span>`:''}
+        </div>
+      </div>`;
+    }).join(''):`<div class="empty"><svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><h3>Noch kein Archiv</h3><p>Reise-Status auf „Archiv" setzen</p></div>`}
+  `;
+}
+
+// ═══════════════════════════════════════════════════════
+//  DOCUMENTS
+// ═══════════════════════════════════════════════════════
+function setDF(el,f){
+  docFilter=f;P.docFilter=f;savePrefs();
+  document.querySelectorAll('#doc-chips .chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');renderDocs();
+}
+const DOC_ICO={Reisepass:'🛂',Visum:'📋',Ticket:'✈️',Buchung:'🏨',Versicherung:'🛡️',Sonstiges:'📌'};
+
+function renderDocCard(d){
+  const today=new Date();let expHtml='';
+  if(d.exp){
+    const diff=Math.round((new Date(d.exp)-today)/86400000);
+    const cls=diff<0?'exp-over':diff<90?'exp-warn':'exp-ok';
+    const lbl=diff<0?`Abgelaufen (${Math.abs(diff)} Tage)`:diff<90?`Läuft ab in ${diff} Tagen`:`Gültig bis ${fd(d.exp)}`;
+    expHtml=`<div class="doc-exp ${cls}">${lbl}</div>`;
+  }
+  return`<div class="doccard"><div class="doc-ico">${DOC_ICO[d.type]||'📌'}</div><div style="flex:1"><div class="doc-n">${d.name}</div><div class="doc-m">${d.ref?`#${d.ref} · `:''}${d.trip||''}</div>${d.note?`<div style="font-size:11px;color:var(--text2);margin-top:3px">${d.note}</div>`:''}${expHtml}<div style="margin-top:8px"><button class="bsm bsm-d" onclick="delDoc('${d.id}')">✕ Löschen</button></div></div></div>`;
+}
+
+function renderDocs(){
+  let docs=D.docs||[];
+  if(docFilter!=='all')docs=docs.filter(d=>d.type===docFilter);
+  docs.sort((a,b)=>{
+    if(!a.exp&&!b.exp)return 0;if(!a.exp)return 1;if(!b.exp)return -1;
+    return new Date(a.exp)-new Date(b.exp);
+  });
+  document.getElementById('docs-list').innerHTML=docs.length
+    ?docs.map(d=>renderDocCard(d)).join('')
+    :`<div class="empty"><svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><h3>Keine Dokumente</h3><p>+ drücken</p></div>`;
+}
+function openDocDr(tripName){
+  ['ed-name','ed-ref','ed-exp','ed-note'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('ed-trip').value=tripName||'';
+  openOv('doc');
+}
+function saveDoc(){
+  const name=document.getElementById('ed-name').value.trim();if(!name){toast('Name');return}
+  if(!D.docs)D.docs=[];
+  D.docs.unshift({id:gid(),name,type:document.getElementById('ed-type').value,
+    exp:document.getElementById('ed-exp').value,ref:document.getElementById('ed-ref').value,
+    trip:document.getElementById('ed-trip').value,note:document.getElementById('ed-note').value});
+  sd(D);closeOv('doc');renderDocs();toast('Dokument gespeichert ✓');
+}
+function delDoc(id){D.docs=(D.docs||[]).filter(d=>d.id!==id);sd(D);renderDocs()}
+
+// ═══════════════════════════════════════════════════════
+//  EXPORT / IMPORT / BACKUP
+// ═══════════════════════════════════════════════════════
+function exportAll(){
+  const blob=new Blob([JSON.stringify(D,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`voyage_backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();toast('Backup exportiert ✓');
+}
+function importAll(input){
+  const f=input.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const p=JSON.parse(e.target.result);
+      if(p.trips){D=p;sd(D);renderTrips();toast('Import erfolgreich ✓')}
+      else if(p.id&&p.name){
+        const i=D.trips.findIndex(t=>t.id===p.id);
+        if(i>=0)D.trips[i]=p;else D.trips.unshift(p);
+        sd(D);renderTrips();toast('Reise importiert ✓');
+      }
+    }catch{toast('Ungültige JSON-Datei')}
+  };
+  r.readAsText(f);
+}
+function clearAll(){if(!confirm('ALLE Daten löschen? Nicht rückgängig!'))return;D={trips:[],docs:[],countries:[]};sd(D);renderTrips();toast('Alle Daten gelöscht')}
+
+function exportTripJSON(){
+  const t=D.trips.find(t=>t.id===curTrip);if(!t)return;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(t,null,2)],{type:'application/json'}));
+  a.download=`voyage_${t.name.replace(/\s+/g,'_')}.json`;
+  a.click();toast('JSON exportiert ✓');
+}
+function exportTripPDF(){
+  const t=D.trips.find(t=>t.id===curTrip);if(!t)return;
+  const total=getTripTotal(t);const r=t.review||{};
+  const win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${t.name}</title>
+  <style>body{font-family:Georgia,serif;max-width:720px;margin:40px auto;padding:20px;color:#111}
+  h1{font-size:28px;border-bottom:3px solid #d4a843;padding-bottom:8px}
+  h2{font-size:16px;border-bottom:1px solid #e0d8c0;padding-bottom:4px;margin-top:22px;color:#5a4010}
+  .meta{color:#666;font-size:13px;margin:8px 0 16px}
+  table{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px}
+  td,th{padding:7px 10px;text-align:left;border-bottom:1px solid #eee}th{background:#faf7f0;font-weight:600}
+  .total{font-size:22px;font-weight:bold;color:#d4a843}.ok{color:#3a9}.warn{color:#a80}
+  @media print{body{margin:0}}</style></head><body>
+  <h1>${t.flag||'🌍'} ${t.name}</h1>
+  <div class="meta">${t.desc||''} · ${t.dateFrom?fd(t.dateFrom):''} ${t.dateTo?'– '+fd(t.dateTo):''} · ${t.countries?.join(', ')||''}</div>
+  <h2>Route & Stationen</h2>
+  <table><tr><th>#</th><th>Ort</th><th>Tage</th><th>Anreise</th><th>Kosten</th><th>Notizen</th></tr>
+  ${(t.stops||[]).map((s,i)=>`<tr><td>${i+1}</td><td>${s.name}</td><td>${s.days||'-'}</td><td>${s.transport||'-'}</td><td>€${(pf(s.tc)+pf(s.ac)*pi(s.days)+pf(s.fd)*pi(s.days)+pf(s.act)).toFixed(0)}</td><td>${s.notes||'-'}</td></tr>`).join('')}
+  </table>
+  <h2>Budget · Gesamt: <span class="total">€${total.toFixed(2)}</span>${t.budget?` / €${t.budget} geplant`:''}</h2>
+  ${(t.costs||[]).length?`<table><tr><th>Kostenpunkt</th><th>Kategorie</th><th>Betrag</th></tr>${t.costs.map(c=>`<tr><td>${c.name}</td><td>${c.cat}</td><td>€${c.amt}</td></tr>`).join('')}</table>`:''}
+  <h2>Packliste (${(t.packlist||[]).filter(i=>i.checked).length}/${(t.packlist||[]).length})</h2>
+  <table><tr><th>Item</th><th>Kategorie</th><th>Status</th></tr>
+  ${(t.packlist||[]).map(i=>`<tr><td>${i.name}</td><td>${i.cat}</td><td class="${i.checked?'ok':'warn'}">${i.checked?'✓ Gepackt':'○ Offen'}</td></tr>`).join('')}</table>
+  <h2>Impfungen</h2>
+  <table><tr><th>Impfung</th><th>Status</th><th>Notiz</th></tr>
+  ${(t.vaccines||[]).map(v=>`<tr><td>${v.name}</td><td>${v.status}</td><td>${v.note||'-'}</td></tr>`).join('')}</table>
+  <h2>Spots & Orte</h2>
+  <table><tr><th>Name</th><th>Typ</th><th>★</th><th>Notiz</th></tr>
+  ${(t.spots||[]).map(s=>`<tr><td>${s.name}</td><td>${s.type}</td><td>${'★'.repeat(s.rating||0)}</td><td>${s.note||'-'}</td></tr>`).join('')}</table>
+  ${r.stars?`<h2>Bewertung: ${'⭐'.repeat(r.stars)}</h2>${r.high?`<p><strong>Highlight:</strong> ${r.high}</p>`:''}${r.note?`<p><strong>Notiz:</strong> ${r.note}</p>`:''}`:''} 
+  <script>window.print()<\/script></body></html>`);
+  win.document.close();toast('PDF wird geöffnet…');
+}
+
+// ═══════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════
+function openOv(n){document.getElementById('ov-'+n).classList.add('on')}
+function closeOv(n){document.getElementById('ov-'+n).classList.remove('on')}
+function toast(msg,dur=2400){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT — restore persistent state
+// ═══════════════════════════════════════════════════════
+(function init(){
+  restoreChips();
+  // restore last screen (default: trips)
+  const lastScreen=P.lastScreen||'trips';
+  nav(lastScreen);
+  // If last screen was detail, re-open that trip
+  if(lastScreen==='detail'&&P.lastOpenTrip){
+    const t=D.trips.find(t=>t.id===P.lastOpenTrip);
+    if(t)openDetail(P.lastOpenTrip);
+    else nav('trips');
+  }
+  // Service Worker
+  if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+</script>
+</body>
+</html>

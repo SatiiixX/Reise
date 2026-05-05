@@ -577,7 +577,7 @@ textarea.fi{resize:none;min-height:68px;line-height:1.5}
   <div class="fg"><label class="fl">Name der Reise</label><input class="fi" id="et-name" placeholder="z.B. Thailand Backpacking 2025"></div>
   <div class="frow">
     <div class="fg"><label class="fl">Flag / Emoji</label><input class="fi" id="et-flag" placeholder="🇹🇭"></div>
-    <div class="fg"><label class="fl">Status</label><select class="fi" id="et-status">
+    <div class="fg"><label class="fl">Status</label><select class="fi" id="et-status" onchange="updateBudgetFields()">
       <option value="planned">📅 Geplant</option>
       <option value="done">✅ Archiv</option>
       <option value="dream">⭐ Bucket List</option>
@@ -588,10 +588,25 @@ textarea.fi{resize:none;min-height:68px;line-height:1.5}
     <div class="fg"><label class="fl">Bis</label><input class="fi" type="date" id="et-to" oninput="calcTripDays()"></div>
   </div>
   <div id="et-days-preview" style="font-size:11px;color:var(--gold);margin:-6px 0 10px;display:none">📅 <span id="et-days-val"></span> Tage</div>
-  <div class="frow">
+
+  <!-- Geplant: Budget -->
+  <div id="budget-fields-planned" class="frow">
     <div class="fg"><label class="fl">Gesamtbudget (€)</label><input class="fi" type="number" id="et-budget" placeholder="2500"></div>
     <div class="fg"><label class="fl">Tagesbudget (€)</label><input class="fi" type="number" id="et-dbudget" placeholder="80"></div>
   </div>
+  <!-- Archiv: tatsächliche Kosten -->
+  <div id="budget-fields-done" style="display:none">
+    <div class="frow">
+      <div class="fg"><label class="fl">Tatsächliche Gesamtkosten (€)</label><input class="fi" type="number" id="et-actual-cost" placeholder="1840"></div>
+      <div class="fg"><label class="fl">Ø Kosten/Tag (€, optional)</label><input class="fi" type="number" id="et-actual-cpd" placeholder="62"></div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin:-6px 0 10px">Reise abgeschlossen — hier die echten Kosten eintragen.</div>
+  </div>
+  <!-- Bucket List: geschätztes Budget -->
+  <div id="budget-fields-dream" style="display:none">
+    <div class="fg"><label class="fl">Geschätztes Budget (€)</label><input class="fi" type="number" id="et-dream-budget" placeholder="3000"></div>
+  </div>
+
   <div class="fg"><label class="fl">Beschreibung / Route</label><input class="fi" id="et-desc" placeholder="z.B. Bangkok → Chiang Mai → Krabi"></div>
   <div class="fg">
     <label class="fl">Besuchte Länder</label>
@@ -899,6 +914,14 @@ function setTF(el,f){
 }
 
 function getTripTotal(t){
+  // Archiv: tatsächliche Kosten haben Priorität
+  if(t.status==='done'){
+    const actual=pf(t.actualCost)||pf(t.review?.actual);
+    if(actual) return actual;
+  }
+  // Bucket List: geschätztes Budget
+  if(t.status==='dream') return pf(t.dreamBudget)||pf(t.budget);
+  // Geplant: aus Stationen + manuellen Kosten
   let x=0;
   (t.costs||[]).forEach(c=>x+=pf(c.amt));
   (t.stops||[]).forEach(s=>x+=pf(s.tc)+pf(s.ac)*pi(s.days)+pf(s.fd)*pi(s.days)+pf(s.act));
@@ -942,8 +965,10 @@ function renderTrips(){
         ${tot?`<span>💶 ${fm(tot)}</span>`:''}
         ${countriesTags?`<span>${countriesTags}</span>`:''}
       </div>
-      ${t.budget?`<div class="bbar"><div class="bfill" style="width:${pct}%"></div></div>
-      <div class="blbl"><span>${fm(tot)}</span><span>${fm(t.budget)} Budget</span></div>`:''}
+      ${t.budget&&t.status==='planned'?`<div class="bbar"><div class="bfill" style="width:${pct}%"></div></div>
+      <div class="blbl"><span>${fm(tot)} ausgeplant</span><span>${fm(t.budget)} Budget</span></div>`:''}
+      ${t.status==='done'&&tot?`<div style="margin-top:8px;font-size:11px;font-weight:600;color:var(--green)">✅ Kosten: ${fm(tot)}</div>`:''}
+      ${t.status==='dream'&&tot?`<div style="margin-top:8px;font-size:11px;color:var(--text2)">📋 Geschätzt: ${fm(tot)}</div>`:''}
     </div>`;
   }).join(''):`<div class="empty">
     <svg width="52" height="52" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -961,12 +986,24 @@ function renderTrips(){
 // ═══════════════════════════════════════════════════════
 //  TRIP FORM
 // ═══════════════════════════════════════════════════════
+// ─── Budget-Felder je nach Status umschalten ───
+function updateBudgetFields(){
+  const status=document.getElementById('et-status')?.value||'planned';
+  document.getElementById('budget-fields-planned').style.display=status==='planned'?'':'none';
+  document.getElementById('budget-fields-done').style.display=status==='done'?'block':'none';
+  document.getElementById('budget-fields-dream').style.display=status==='dream'?'block':'none';
+}
+
 function openNewTripDr(){
   document.getElementById('trip-dr-t').textContent='Neue Reise';
   document.getElementById('et-id').value='';
-  ['et-name','et-flag','et-from','et-to','et-budget','et-dbudget','et-desc'].forEach(i=>document.getElementById(i).value='');
+  ['et-name','et-flag','et-from','et-to','et-budget','et-dbudget',
+   'et-actual-cost','et-actual-cpd','et-dream-budget','et-desc'].forEach(i=>{
+    const el=document.getElementById(i);if(el)el.value='';
+  });
   document.getElementById('et-status').value='planned';
   document.getElementById('et-days-preview').style.display='none';
+  updateBudgetFields();
   initCountryDropdown([]);
   openOv('trip');
 }
@@ -981,7 +1018,11 @@ function editCurrentTrip(){
   document.getElementById('et-to').value=t.dateTo||'';
   document.getElementById('et-budget').value=t.budget||'';
   document.getElementById('et-dbudget').value=t.dbudget||'';
+  document.getElementById('et-actual-cost').value=t.actualCost||t.review?.actual||'';
+  document.getElementById('et-actual-cpd').value=t.actualCpd||'';
+  document.getElementById('et-dream-budget').value=t.dreamBudget||t.budget||'';
   document.getElementById('et-desc').value=t.desc||'';
+  updateBudgetFields();
   initCountryDropdown(t.countries||[]);
   calcTripDays();
   openOv('trip');
@@ -990,18 +1031,37 @@ function saveTrip(){
   const name=document.getElementById('et-name').value.trim();
   if(!name){toast('Name eingeben');return}
   const eid=document.getElementById('et-id').value;
-  const countries=selectedISOs.slice(); // from dropdown state
+  const status=document.getElementById('et-status').value;
+  const countries=selectedISOs.slice();
+
+  let budget='',dbudget='',actualCost='',actualCpd='',dreamBudget='';
+  if(status==='planned'){
+    budget=document.getElementById('et-budget').value;
+    dbudget=document.getElementById('et-dbudget').value;
+  } else if(status==='done'){
+    actualCost=document.getElementById('et-actual-cost').value;
+    actualCpd=document.getElementById('et-actual-cpd').value;
+  } else if(status==='dream'){
+    dreamBudget=document.getElementById('et-dream-budget').value;
+    budget=dreamBudget;
+  }
+
+  const existing=eid?D.trips.find(t=>t.id===eid):null;
   const trip={
-    id:eid||gid(),name,
+    id:eid||gid(), name,
     flag:document.getElementById('et-flag').value.trim()||'🌍',
-    status:document.getElementById('et-status').value,
+    status,
     dateFrom:document.getElementById('et-from').value,
     dateTo:document.getElementById('et-to').value,
-    budget:document.getElementById('et-budget').value,
-    dbudget:document.getElementById('et-dbudget').value,
+    budget, dbudget, actualCost, actualCpd, dreamBudget,
     desc:document.getElementById('et-desc').value,
     countries
   };
+  // Archiv: actualCost auch ins review schreiben
+  if(status==='done'&&actualCost){
+    trip.review={...(existing?.review||{}), actual:actualCost};
+  }
+
   if(eid){
     const i=D.trips.findIndex(t=>t.id===eid);
     D.trips[i]={...D.trips[i],...trip};
@@ -1013,7 +1073,6 @@ function saveTrip(){
     toast('Reise angelegt ✓');
   }
   sd(D);closeOv('trip');renderTrips();
-  // refresh map layer if visible
   if(geoLayer)refreshMapColors();
 }
 function deleteCurrentTrip(){
@@ -1265,11 +1324,11 @@ function renderBudget(t){
   const pct=budget?Math.min(100,Math.round(total/budget*100)):0;
   const remaining=budget-total;
 
-  // Quick actual cost from review
-  const actualCost=pf(t.review?.actual);
+  const isDone=t.status==='done';
+  const actualCost=pf(t.actualCost)||pf(t.review?.actual);
 
   let forecastHtml='';
-  if(budget&&nights){
+  if(!isDone&&budget&&nights){
     forecastHtml=`<div class="forecast"><div class="forecast-t">🔮 Budget-Analyse</div>
       <div style="font-size:12px;color:var(--text2);line-height:1.9">
         <div>Geplante Nächte: <strong style="color:var(--text)">${nights}</strong></div>
@@ -1278,31 +1337,45 @@ function renderBudget(t){
         <div style="color:${pct>90?'var(--coral)':pct>70?'var(--gold2)':'var(--green)'}">
           Budget: ${pct}% — ${remaining>=0?fm(remaining)+' verbleibend':fm(-remaining)+' überzogen'}
         </div>
-        ${actualCost?`<div style="color:var(--teal)">✅ Tatsächliche Kosten: <strong>${fm(actualCost)}</strong></div>`:''}
       </div>
     </div>`;
   }
 
-  // Quick-Betrag Box (für Archiv-Trips die keine Stationen haben)
-  const quickHtml=`<div class="card" style="margin-bottom:11px">
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);margin-bottom:8px">⚡ Schnell-Eingabe</div>
+  // Quick-Box: status-abhängig
+  const quickHtml=isDone?`<div class="card" style="margin-bottom:11px;border-color:rgba(61,214,140,.2)">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--green);margin-bottom:8px">✅ Tatsächliche Kosten</div>
     <div class="frow">
-      <div><label class="fl">Tatsächl. Gesamtkosten (€)</label>
+      <div><label class="fl">Gesamtkosten (€)</label>
         <input class="fi" type="number" id="quick-actual" value="${actualCost||''}" placeholder="z.B. 1840" oninput="saveQuickActual()">
       </div>
+      <div><label class="fl">Ø Kosten / Tag (€)</label>
+        <input class="fi" type="number" id="quick-cpd" value="${pf(t.actualCpd)||''}" placeholder="auto" oninput="saveQuickCpd()">
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:4px">Direkt gespeichert</div>
+  </div>`:`<div class="card" style="margin-bottom:11px">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);margin-bottom:8px">⚡ Schnell-Eingabe</div>
+    <div class="frow">
       <div><label class="fl">Budget (€)</label>
         <input class="fi" type="number" id="quick-budget" value="${t.budget||''}" placeholder="z.B. 2000" oninput="saveQuickBudget()">
       </div>
+      <div><label class="fl">Tagesbudget (€)</label>
+        <input class="fi" type="number" id="quick-dbudget" value="${t.dbudget||''}" placeholder="z.B. 80" oninput="saveQuickDbudget()">
+      </div>
     </div>
-    <div style="font-size:10px;color:var(--text3);margin-top:4px">Wird direkt gespeichert · Kein Speichern nötig</div>
+    <div style="font-size:10px;color:var(--text3);margin-top:4px">Direkt gespeichert</div>
   </div>`;
 
+  // Übersicht-Karte: bei Archiv actualCost prominent, bei Geplant Stationskosten
+  const mainLabel=isDone?'Gesamtkosten (tatsächlich)':'Geplante Kosten (aus Stationen)';
+  const mainVal=isDone?(actualCost||total):total;
+
   document.getElementById('budget-body').innerHTML=quickHtml+forecastHtml+`<div class="bov">
-    <div style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Geplante Kosten (aus Stationen)</div>
-    <div class="btotal"><span class="btotal-sub">€</span>${total.toFixed(2)}</div>
-    ${actualCost?`<div style="font-size:13px;color:var(--teal);margin-top:2px">Tatsächlich: ${fm(actualCost)}</div>`:''}
-    ${nights?`<div style="font-size:11px;color:var(--text2);margin-top:4px">Ø ${fm(cpd)} / Tag · ${nights} Nächte</div>`:''}
-    ${budget?`<div style="margin-top:10px;font-size:11px;display:flex;justify-content:space-between;color:var(--text2)">
+    <div style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">${mainLabel}</div>
+    <div class="btotal"><span class="btotal-sub">€</span>${mainVal.toFixed(2)}</div>
+    ${isDone&&nights?`<div style="font-size:11px;color:var(--text2);margin-top:4px">Ø ${fm(actualCpd||pf(t.actualCpd)||(nights?mainVal/nights:0))} / Tag · ${nights} Nächte</div>`:''}
+    ${!isDone&&nights?`<div style="font-size:11px;color:var(--text2);margin-top:4px">Ø ${fm(cpd)} / Tag · ${nights} Nächte</div>`:''}
+    ${!isDone&&budget?`<div style="margin-top:10px;font-size:11px;display:flex;justify-content:space-between;color:var(--text2)">
       <span>Budget: ${fm(budget)}</span>
       <span style="color:${pct>90?'var(--coral)':pct>70?'var(--gold2)':'var(--green)'};font-weight:600">${pct}%</span></div>
     <div class="bbar" style="height:5px;margin-top:5px"><div class="bfill" style="width:${pct}%;background:${pct>90?'var(--coral)':pct>70?'var(--gold2)':'var(--green)'}"></div></div>`:''}
@@ -1320,13 +1393,24 @@ function renderBudget(t){
 
 function saveQuickActual(){
   const t=D.trips.find(t=>t.id===curTrip);if(!t)return;
+  t.actualCost=document.getElementById('quick-actual').value;
   if(!t.review)t.review={};
-  t.review.actual=document.getElementById('quick-actual').value;
+  t.review.actual=t.actualCost;
+  sd(D);
+}
+function saveQuickCpd(){
+  const t=D.trips.find(t=>t.id===curTrip);if(!t)return;
+  t.actualCpd=document.getElementById('quick-cpd').value;
   sd(D);
 }
 function saveQuickBudget(){
   const t=D.trips.find(t=>t.id===curTrip);if(!t)return;
   t.budget=document.getElementById('quick-budget').value;
+  sd(D);
+}
+function saveQuickDbudget(){
+  const t=D.trips.find(t=>t.id===curTrip);if(!t)return;
+  t.dbudget=document.getElementById('quick-dbudget').value;
   sd(D);
 }
 

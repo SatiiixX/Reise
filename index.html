@@ -1819,15 +1819,26 @@ function calcTripDays(){
   }
 }
 
+// ISO-A3 → ISO-A2 für Natural Earth GeoJSON (ISO_A2 ist oft "-99")
+const A3_TO_A2={'AFG':'AF','ALB':'AL','DZA':'DZ','AND':'AD','AGO':'AO','ATG':'AG','ARG':'AR','ARM':'AM','AUS':'AU','AUT':'AT','AZE':'AZ','BHS':'BS','BHR':'BH','BGD':'BD','BRB':'BB','BLR':'BY','BEL':'BE','BLZ':'BZ','BEN':'BJ','BTN':'BT','BOL':'BO','BIH':'BA','BWA':'BW','BRA':'BR','BRN':'BN','BGR':'BG','BFA':'BF','BDI':'BI','CPV':'CV','KHM':'KH','CMR':'CM','CAN':'CA','CAF':'CF','TCD':'TD','CHL':'CL','CHN':'CN','COL':'CO','COM':'KM','COG':'CG','COD':'CD','CRI':'CR','HRV':'HR','CUB':'CU','CYP':'CY','CZE':'CZ','DNK':'DK','DJI':'DJ','DMA':'DM','DOM':'DO','ECU':'EC','EGY':'EG','SLV':'SV','GNQ':'GQ','ERI':'ER','EST':'EE','SWZ':'SZ','ETH':'ET','FJI':'FJ','FIN':'FI','FRA':'FR','GAB':'GA','GMB':'GM','GEO':'GE','DEU':'DE','GHA':'GH','GRC':'GR','GRD':'GD','GTM':'GT','GIN':'GN','GNB':'GW','GUY':'GY','HTI':'HT','HND':'HN','HUN':'HU','ISL':'IS','IND':'IN','IDN':'ID','IRN':'IR','IRQ':'IQ','IRL':'IE','ISR':'IL','ITA':'IT','JAM':'JM','JPN':'JP','JOR':'JO','KAZ':'KZ','KEN':'KE','KIR':'KI','KWT':'KW','KGZ':'KG','LAO':'LA','LVA':'LV','LBN':'LB','LSO':'LS','LBR':'LR','LBY':'LY','LIE':'LI','LTU':'LT','LUX':'LU','MDG':'MG','MWI':'MW','MYS':'MY','MDV':'MV','MLI':'ML','MLT':'MT','MHL':'MH','MRT':'MR','MUS':'MU','MEX':'MX','FSM':'FM','MDA':'MD','MCO':'MC','MNG':'MN','MNE':'ME','MAR':'MA','MOZ':'MZ','MMR':'MM','NAM':'NA','NRU':'NR','NPL':'NP','NLD':'NL','NZL':'NZ','NIC':'NI','NER':'NE','NGA':'NG','NOR':'NO','OMN':'OM','PAK':'PK','PLW':'PW','PAN':'PA','PNG':'PG','PRY':'PY','PER':'PE','PHL':'PH','POL':'PL','PRT':'PT','QAT':'QA','ROU':'RO','RUS':'RU','RWA':'RW','KNA':'KN','LCA':'LC','VCT':'VC','WSM':'WS','SMR':'SM','STP':'ST','SAU':'SA','SEN':'SN','SRB':'RS','SYC':'SC','SLE':'SL','SGP':'SG','SVK':'SK','SVN':'SI','SLB':'SB','SOM':'SO','ZAF':'ZA','SSD':'SS','ESP':'ES','LKA':'LK','SDN':'SD','SUR':'SR','SWE':'SE','CHE':'CH','SYR':'SY','TWN':'TW','TJK':'TJ','TZA':'TZ','THA':'TH','TLS':'TL','TGO':'TG','TON':'TO','TTO':'TT','TUN':'TN','TUR':'TR','TKM':'TM','TUV':'TV','UGA':'UG','UKR':'UA','ARE':'AE','GBR':'GB','USA':'US','URY':'UY','UZB':'UZ','VUT':'VU','VEN':'VE','VNM':'VN','YEM':'YE','ZMB':'ZM','ZWE':'ZW','KOR':'KR','PRK':'KP','MKD':'MK','XKX':'XK','PSE':'PS','HKG':'HK','MAC':'MO','CIV':'CI','NFK':'NF'};
+
+function getFeatureISO(props){
+  let iso=(props.ISO_A2||props.iso_a2||'').toUpperCase();
+  if(!iso||iso==='-99'||iso==='-1'||iso.length!==2){
+    const a3=(props.ISO_A3||props.iso_a3||props.ADM0_A3||'').toUpperCase();
+    iso=A3_TO_A2[a3]||iso;
+  }
+  return iso;
+}
+
 function buildCountryMap(){
-  // iso -> {visited:[trips], planned:[trips], wishlist:[trips]}
   const cm={};
   D.trips.forEach(t=>{
     const status=t.status==='done'?'visited':t.status==='planned'?'planned':'wishlist';
     (t.countries||[]).forEach(iso=>{
-      if(!cm[iso])cm[iso]={visited:[],planned:[],wishlist:[]};
-      if(!cm[iso][status])cm[iso][status]=[];
-      cm[iso][status].push(t);
+      const key=iso.toUpperCase();
+      if(!cm[key])cm[key]={visited:[],planned:[],wishlist:[]};
+      cm[key][status].push(t);
     });
   });
   return cm;
@@ -1846,30 +1857,41 @@ async function loadGeoJSON(){
 function isDark(){return window.matchMedia('(prefers-color-scheme:dark)').matches}
 
 async function initMap(){
-  if(leafMap){refreshMapColors();return}
-  // Init Leaflet
-  leafMap=L.map('leafmap',{
-    center:[20,12],zoom:2,minZoom:1,maxZoom:8,
-    zoomControl:true,attributionControl:true
-  });
-  applyTiles();
-  const geo=await loadGeoJSON();
-  if(geo)buildGeoLayer(geo);
+  // Immer GeoJSON laden wenn noch nicht da
+  const geo = await loadGeoJSON();
+
+  if(!leafMap){
+    leafMap=L.map('leafmap',{
+      center:[20,12],zoom:2,minZoom:1,maxZoom:10,
+      zoomControl:true,attributionControl:true,
+      preferCanvas:true
+    });
+    applyTiles();
+  }
+
+  // Immer neu aufbauen damit aktuelle Trip-Daten angezeigt werden
+  if(geo) buildGeoLayer(geo);
 }
 
 function applyTiles(){
   if(!leafMap)return;
-  leafMap.eachLayer(l=>{if(l._url||l._tiles)leafMap.removeLayer(l)});
+  // Nur TileLayer entfernen
+  leafMap.eachLayer(l=>{if(l instanceof L.TileLayer)leafMap.removeLayer(l)});
+  const opts={
+    subdomains:'abcd',
+    maxZoom:10,
+    attribution:'© <a href="https://carto.com">CARTO</a>',
+    crossOrigin:true,
+    updateWhenIdle:false,
+    updateWhenZooming:false,
+    keepBuffer:4
+  };
   if(isDark()){
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',
-      {subdomains:'abcd',maxZoom:8,attribution:'© CARTO'}).addTo(leafMap);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',
-      {subdomains:'abcd',maxZoom:8,pane:'overlayPane'}).addTo(leafMap);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',opts).addTo(leafMap);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',{...opts,pane:'overlayPane'}).addTo(leafMap);
   }else{
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
-      {subdomains:'abcd',maxZoom:8,attribution:'© CARTO'}).addTo(leafMap);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png',
-      {subdomains:'abcd',maxZoom:8,pane:'overlayPane'}).addTo(leafMap);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',opts).addTo(leafMap);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png',{...opts,pane:'overlayPane'}).addTo(leafMap);
   }
 }
 
@@ -1877,95 +1899,87 @@ function buildGeoLayer(geo){
   if(geoLayer){leafMap.removeLayer(geoLayer);geoLayer=null}
   const cm=buildCountryMap();
   const dark=isDark();
-
   geoLayer=L.geoJSON(geo,{
     style:feature=>{
-      const iso=(feature.properties.ISO_A2||'').toUpperCase();
+      const iso=getFeatureISO(feature.properties);
       const c=cm[iso];
-      if(c?.visited?.length)  return{fillColor:'#3dd68c',color:'rgba(61,214,140,.5)',weight:1.2,fillOpacity:.65};
-      if(c?.planned?.length)  return{fillColor:'#d4a843',color:'rgba(212,168,67,.5)',weight:1.2,fillOpacity:.6};
-      if(c?.wishlist?.length) return{fillColor:'#8b5cf6',color:'rgba(139,92,246,.4)',weight:1.2,fillOpacity:.55};
-      return{fillColor:dark?'#1a2d4f':'#d8e4f0',color:dark?'rgba(255,255,255,.08)':'rgba(0,0,0,.1)',weight:.4,fillOpacity:.5};
+      if(c?.visited?.length)  return{fillColor:'#3dd68c',color:'#28b865',weight:1.5,fillOpacity:.72};
+      if(c?.planned?.length)  return{fillColor:'#d4a843',color:'#b8860b',weight:1.5,fillOpacity:.68};
+      if(c?.wishlist?.length) return{fillColor:'#8b5cf6',color:'#6d40d8',weight:1.5,fillOpacity:.62};
+      return{fillColor:dark?'#162030':'#c8d8e8',color:dark?'rgba(255,255,255,.09)':'rgba(80,120,160,.25)',weight:.5,fillOpacity:.7};
     },
     onEachFeature:(feature,layer)=>{
-      const iso=(feature.properties.ISO_A2||'').toUpperCase();
+      const iso=getFeatureISO(feature.properties);
       const name=feature.properties.ADMIN||feature.properties.name||ISO_NAME[iso]||iso;
       const c=cm[iso];
       const hasTrips=c&&(c.visited.length||c.planned.length||c.wishlist.length);
-
-      // hover pill
-      layer.on('mouseover',e=>{
+      layer.on('mouseover',()=>{
         const pill=document.getElementById('map-pill');
+        const flag=ISO_FLAG[iso]||'';
         const status=c?.visited?.length?'✅ Besucht':c?.planned?.length?'📅 Geplant':c?.wishlist?.length?'⭐ Bucket List':'';
-        pill.textContent=name+(status?' — '+status:'');
+        pill.textContent=(flag?flag+' ':'')+name+(status?' — '+status:'');
         pill.classList.add('show');
-        if(hasTrips)layer.setStyle({fillOpacity:.9,weight:2});
+        if(hasTrips)layer.setStyle({fillOpacity:.95,weight:2.5});
       });
       layer.on('mouseout',()=>{
         document.getElementById('map-pill').classList.remove('show');
         if(geoLayer)geoLayer.resetStyle(layer);
       });
-
-      // click → open country detail drawer
-      layer.on('click',()=>{
-        showCountryDetail(iso,name,c);
-      });
+      layer.on('click',()=>showCountryDetail(iso,name,c));
     }
   }).addTo(leafMap);
-
-  // Add stop markers for trips with coords
   addStopMarkers();
 }
 
 function addStopMarkers(){
-  // Remove existing markers
-  if(leafMap._stopMarkers){
-    leafMap._stopMarkers.forEach(m=>leafMap.removeLayer(m));
-  }
+  if(leafMap._stopMarkers){leafMap._stopMarkers.forEach(m=>leafMap.removeLayer(m))}
   leafMap._stopMarkers=[];
-
   D.trips.forEach(t=>{
     (t.stops||[]).filter(s=>s.coords).forEach(s=>{
       const parts=s.coords.split(',').map(Number);
-      if(parts.length<2||isNaN(parts[0]))return;
+      if(parts.length<2||isNaN(parts[0])||isNaN(parts[1]))return;
       const color=t.status==='done'?'#3dd68c':t.status==='planned'?'#d4a843':'#8b5cf6';
-      const icon=L.divIcon({
-        className:'',
-        html:`<div style="width:10px;height:10px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,.8);box-shadow:0 2px 6px rgba(0,0,0,.4)"></div>`,
-        iconSize:[10,10],iconAnchor:[5,5]
-      });
-      const marker=L.marker([parts[0],parts[1]],{icon})
-        .addTo(leafMap)
+      const icon=L.divIcon({className:'',html:`<div style="width:10px;height:10px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,.85);box-shadow:0 2px 8px rgba(0,0,0,.5)"></div>`,iconSize:[10,10],iconAnchor:[5,5]});
+      const m=L.marker([parts[0],parts[1]],{icon}).addTo(leafMap)
         .bindPopup(`<strong>${s.name}</strong><br><span style="color:#8aa0c0;font-size:11px">${t.flag||'🌍'} ${t.name}</span>${s.days?`<br><span style="font-size:11px">🌙 ${s.days} Tage</span>`:''}`,{maxWidth:180});
-      marker.on('click',()=>marker.openPopup());
-      leafMap._stopMarkers.push(marker);
+      m.on('click',()=>m.openPopup());
+      leafMap._stopMarkers.push(m);
     });
   });
 }
 
 function refreshMapColors(){
-  if(!geoLayer||!geoData)return;
-  buildGeoLayer(geoData);
+  if(!leafMap)return;
+  if(geoData)buildGeoLayer(geoData);
+  else loadGeoJSON().then(geo=>{if(geo)buildGeoLayer(geo)});
 }
 
 function showCountryDetail(iso,name,cm){
-  document.getElementById('country-dr-title').textContent=`${ISO_NAME[iso]||name} (${iso})`;
-  const allTrips=[...(cm?.visited||[]),...(cm?.planned||[]),...(cm?.wishlist||[])];
-  if(!allTrips.length){
-    document.getElementById('country-dr-body').innerHTML=`<div style="font-size:13px;color:var(--text2);padding:8px 0">Noch keine Reise mit diesem Land verknüpft.<br><br>Tipp: Beim Anlegen einer Reise ISO-Codes eintragen (z.B. <strong>${iso}</strong>).</div>`;
+  const flag=ISO_FLAG[iso]||'🌍';
+  const dname=ISO_NAME[iso]||name;
+  document.getElementById('country-dr-title').textContent=flag+' '+dname;
+
+  // Direkt aus D.trips suchen — cm kann veraltet sein
+  const matchingTrips=D.trips.filter(t=>(t.countries||[]).some(c=>c.toUpperCase()===iso.toUpperCase()));
+  const body=document.getElementById('country-dr-body');
+
+  if(!matchingTrips.length){
+    body.innerHTML=`<div style="padding:12px 0">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:10px">Noch keine Reise mit <strong>${dname}</strong> verknüpft.</div>
+      <div style="font-size:12px;color:var(--text3);line-height:1.8">Reise anlegen oder bearbeiten → Feld <em>„Besuchte Länder"</em> → <strong>${dname}</strong> suchen und auswählen.</div>
+    </div>`;
     openOv('country');return;
   }
-  document.getElementById('country-dr-body').innerHTML=
-    `<div style="font-size:11px;color:var(--text2);margin-bottom:12px">${allTrips.length} Reise(n) mit ${ISO_NAME[iso]||name} verknüpft</div>`+
-    allTrips.map(t=>{
+  const sl={planned:'Geplant',done:'Archiv',dream:'Bucket List'};
+  body.innerHTML=`<div style="font-size:11px;color:var(--text2);margin-bottom:12px">${matchingTrips.length} Reise(n) in ${flag} ${dname}</div>`+
+    matchingTrips.map(t=>{
       const tot=getTripTotal(t);const r=t.review||{};
-      const nights=(t.stops||[]).reduce((s,st)=>s+pi(st.days),0);
-      const sl={planned:'Geplant',done:'Archiv',dream:'Bucket List'};
+      const nights=getTripNights(t);
       return`<div class="tcard" style="margin-bottom:9px" onclick="closeOv('country');openDetail('${t.id}')">
         <div class="tcard-top"><div class="tcard-flag">${t.flag||'🌍'}</div><span class="sp sp-${t.status}">${sl[t.status]||t.status}</span></div>
         <div class="tname">${t.name}</div>
         <div class="tmeta">
-          ${t.dateFrom?`<span>📅 ${fd(t.dateFrom)}</span>`:''}
+          ${t.dateFrom?`<span>📅 ${fd(t.dateFrom)}${t.dateTo?' – '+fd(t.dateTo):''}</span>`:''}
           ${nights?`<span>🌙 ${nights} N</span>`:''}
           ${tot?`<span>💶 ${fm(tot)}</span>`:''}
           ${r.stars?`<span>${'⭐'.repeat(r.stars)}</span>`:''}
@@ -1975,21 +1989,27 @@ function showCountryDetail(iso,name,cm){
   openOv('country');
 }
 
-// System theme watcher → update map tiles
-window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{
-  applyTiles();
-  if(geoData)buildGeoLayer(geoData);
-});
+window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{applyTiles();if(geoData)buildGeoLayer(geoData)});
 
 // ═══════════════════════════════════════════════════════
 //  INSIGHTS
 // ═══════════════════════════════════════════════════════
+function getTripNights(t){
+  if(t.dateFrom&&t.dateTo){
+    const diff=Math.round((new Date(t.dateTo)-new Date(t.dateFrom))/86400000);
+    if(diff>0)return diff;
+  }
+  return(t.stops||[]).reduce((s,st)=>s+pi(st.days),0);
+}
+
 function renderInsights(){
   const trips=D.trips,done=trips.filter(t=>t.status==='done');
   const costs=done.map(t=>{const r=t.review||{};return r.actual?pf(r.actual):getTripTotal(t)});
   const totalSpent=costs.reduce((s,v)=>s+v,0);
-  const totalNights=done.reduce((s,t)=>s+(t.stops||[]).reduce((ss,st)=>ss+pi(st.days),0),0);
-  const cpd=totalNights?totalSpent/totalNights:0;
+  // Nächte aus ALLEN Trips (nicht nur done)
+  const totalNights=trips.reduce((s,t)=>s+getTripNights(t),0);
+  const doneNights=done.reduce((s,t)=>s+getTripNights(t),0);
+  const cpd=doneNights&&totalSpent?totalSpent/doneNights:0;
   const rated=done.filter(t=>t.review?.stars);
   const avgRating=rated.length?rated.reduce((s,t)=>s+t.review.stars,0)/rated.length:0;
   const countrySet=new Set(trips.flatMap(t=>t.countries||[]));
@@ -2016,10 +2036,10 @@ function renderInsights(){
     ${mostExp?`<div class="ins-card" style="margin-bottom:9px;background:var(--card);border:1px solid var(--border);border-radius:var(--rsm);padding:13px"><div style="font-size:9px;color:var(--teal);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">💰 Teuerste Reise</div><div style="font-size:15px;font-weight:700;cursor:pointer" onclick="openDetail('${mostExp.id}')">${mostExp.flag||'🌍'} ${mostExp.name}</div><div class="ins-v">${fm(costs[done.indexOf(mostExp)])}</div></div>`:''}
     ${leastExp&&leastExp.id!==mostExp?.id?`<div class="ins-card" style="margin-bottom:9px;background:var(--card);border:1px solid var(--border);border-radius:var(--rsm);padding:13px"><div style="font-size:9px;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">🎯 Günstigste Reise</div><div style="font-size:15px;font-weight:700;cursor:pointer" onclick="openDetail('${leastExp.id}')">${leastExp.flag||'🌍'} ${leastExp.name}</div><div class="ins-v" style="color:var(--green)">${fm(costs[done.indexOf(leastExp)])}</div></div>`:''}
     ${topC.length?`<div class="slabel" style="padding:4px 0 8px">MEISTBESUCHTE LÄNDER</div>
-    <div class="card" style="margin-bottom:14px">${topC.map(([c,n])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-size:13px">${ISO_NAME[c]||c} <span style="font-size:10px;color:var(--text3)">(${c})</span></span><span style="font-size:13px;color:var(--gold);font-weight:700">${n}×</span></div>`).join('')}</div>`:''}
+    <div class="card" style="margin-bottom:14px">${topC.map(([c,n])=>{const ct=ALL_COUNTRIES.find(x=>x.iso===c);return`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-size:13px">${ct?ct.flag+' ':''}<span>${ct?.name||c}</span></span><span style="font-size:13px;color:var(--gold);font-weight:700">${n}×</span></div>`}).join('')}</div>`:''}
     <div class="slabel" style="padding:4px 0 8px">REISE-ARCHIV</div>
     ${done.length?done.map((t,i)=>{
-      const r=t.review||{};const nights=(t.stops||[]).reduce((s,st)=>s+pi(st.days),0);
+      const r=t.review||{};const nights=getTripNights(t);
       return`<div class="tcard" onclick="openDetail('${t.id}')">
         <div class="tcard-top"><div class="tcard-flag">${t.flag||'🌍'}</div>${r.stars?`<div style="font-size:13px">${'⭐'.repeat(r.stars)}</div>`:''}</div>
         <div class="tname">${t.name}</div>

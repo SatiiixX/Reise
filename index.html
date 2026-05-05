@@ -574,9 +574,16 @@ textarea.fi{resize:none;min-height:68px;line-height:1.5}
 <div class="ov" id="ov-trip" onclick="closeOv('trip')"><div class="dr" onclick="event.stopPropagation()">
   <div class="dhandle"></div><div class="dr-title" id="trip-dr-t">Neue Reise</div>
   <input type="hidden" id="et-id">
+  <input type="hidden" id="et-flag">
   <div class="fg"><label class="fl">Name der Reise</label><input class="fi" id="et-name" placeholder="z.B. Thailand Backpacking 2025"></div>
   <div class="frow">
-    <div class="fg"><label class="fl">Flag / Emoji</label><input class="fi" id="et-flag" placeholder="🇹🇭"></div>
+    <div class="fg">
+      <label class="fl">Flagge</label>
+      <div id="et-flag-display" style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rsm);padding:11px 13px;font-size:28px;line-height:1;min-height:44px;display:flex;align-items:center;gap:8px">
+        <span id="et-flag-emoji">🌍</span>
+        <span style="font-size:11px;color:var(--text3)" id="et-flag-hint">Automatisch aus Länderauswahl</span>
+      </div>
+    </div>
     <div class="fg"><label class="fl">Status</label><select class="fi" id="et-status" onchange="updateBudgetFields()">
       <option value="planned">📅 Geplant</option>
       <option value="done">✅ Archiv</option>
@@ -1012,7 +1019,6 @@ function editCurrentTrip(){
   document.getElementById('trip-dr-t').textContent='Reise bearbeiten';
   document.getElementById('et-id').value=t.id;
   document.getElementById('et-name').value=t.name||'';
-  document.getElementById('et-flag').value=t.flag||'';
   document.getElementById('et-status').value=t.status||'planned';
   document.getElementById('et-from').value=t.dateFrom||'';
   document.getElementById('et-to').value=t.dateTo||'';
@@ -1049,7 +1055,7 @@ function saveTrip(){
   const existing=eid?D.trips.find(t=>t.id===eid):null;
   const trip={
     id:eid||gid(), name,
-    flag:document.getElementById('et-flag').value.trim()||'🌍',
+    flag:document.getElementById('et-flag').value||'🌍',
     status,
     dateFrom:document.getElementById('et-from').value,
     dateTo:document.getElementById('et-to').value,
@@ -1861,6 +1867,7 @@ function selectCountry(iso){
     selectedISOs.push(iso);
     renderSelectedCountries();
     updateCountriesHidden();
+    autoSetFlag();
   }
   document.getElementById('country-search').value='';
   document.getElementById('country-dropdown').style.display='none';
@@ -1869,6 +1876,27 @@ function removeCountry(iso){
   selectedISOs=selectedISOs.filter(i=>i!==iso);
   renderSelectedCountries();
   updateCountriesHidden();
+  autoSetFlag();
+}
+function autoSetFlag(){
+  const emojiEl=document.getElementById('et-flag-emoji');
+  const hintEl=document.getElementById('et-flag-hint');
+  const flagInput=document.getElementById('et-flag');
+  if(!emojiEl)return;
+  if(selectedISOs.length===0){
+    emojiEl.textContent='🌍';
+    if(hintEl)hintEl.style.display='inline';
+    if(flagInput)flagInput.value='🌍';
+  } else {
+    // Erste Flagge als Haupt-Flagge, bei mehreren Ländern alle anzeigen
+    const flags=selectedISOs.map(iso=>{
+      const c=ALL_COUNTRIES.find(c=>c.iso===iso);
+      return c?c.flag:'🌍';
+    });
+    emojiEl.textContent=flags.join(' ');
+    if(hintEl)hintEl.style.display='none';
+    if(flagInput)flagInput.value=flags[0]; // erste Flagge als primäre
+  }
 }
 function renderSelectedCountries(){
   const el=document.getElementById('selected-countries');
@@ -1886,6 +1914,7 @@ function initCountryDropdown(existing){
   selectedISOs=existing||[];
   renderSelectedCountries();
   updateCountriesHidden();
+  autoSetFlag();
   const inp=document.getElementById('country-search');
   if(inp){inp.onblur=hideCountryDrop;}
 }

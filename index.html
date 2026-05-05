@@ -346,6 +346,17 @@ textarea.fi{resize:none;min-height:68px;line-height:1.5}
 .mt10{margin-top:10px}
 .mt14{margin-top:14px}
 
+/* ═══ COUNTRY DROPDOWN ═══ */
+.cdrop-item{padding:10px 13px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .12s;border-bottom:1px solid var(--border)}
+.cdrop-item:last-child{border-bottom:none}
+.cdrop-item:hover,.cdrop-item.hilite{background:var(--card2)}
+.cflag{font-size:18px;flex-shrink:0}
+.cname{flex:1}
+.ciso{font-size:10px;color:var(--text3)}
+.ctag{display:inline-flex;align-items:center;gap:4px;background:var(--gold3);border:1px solid rgba(212,168,67,.3);color:var(--gold);border-radius:20px;padding:3px 10px 3px 8px;font-size:12px;font-weight:500;white-space:nowrap}
+.ctag-x{background:none;border:none;color:var(--gold2);cursor:pointer;font-size:15px;line-height:1;padding:0 0 0 2px;transition:color .1s}
+.ctag-x:hover{color:var(--coral)}
+
 /* ═══ LEAFLET OVERRIDES ═══ */
 .leaflet-container{font-family:'DM Sans',sans-serif!important}
 .leaflet-popup-content-wrapper{
@@ -573,20 +584,23 @@ textarea.fi{resize:none;min-height:68px;line-height:1.5}
     </select></div>
   </div>
   <div class="frow">
-    <div class="fg"><label class="fl">Von</label><input class="fi" type="date" id="et-from"></div>
-    <div class="fg"><label class="fl">Bis</label><input class="fi" type="date" id="et-to"></div>
+    <div class="fg"><label class="fl">Von</label><input class="fi" type="date" id="et-from" oninput="calcTripDays()"></div>
+    <div class="fg"><label class="fl">Bis</label><input class="fi" type="date" id="et-to" oninput="calcTripDays()"></div>
   </div>
+  <div id="et-days-preview" style="font-size:11px;color:var(--gold);margin:-6px 0 10px;display:none">📅 <span id="et-days-val"></span> Tage</div>
   <div class="frow">
     <div class="fg"><label class="fl">Gesamtbudget (€)</label><input class="fi" type="number" id="et-budget" placeholder="2500"></div>
     <div class="fg"><label class="fl">Tagesbudget (€)</label><input class="fi" type="number" id="et-dbudget" placeholder="80"></div>
   </div>
   <div class="fg"><label class="fl">Beschreibung / Route</label><input class="fi" id="et-desc" placeholder="z.B. Bangkok → Chiang Mai → Krabi"></div>
   <div class="fg">
-    <label class="fl">Besuchte Länder (ISO-Codes, kommagetrennt)</label>
-    <input class="fi" id="et-countries" placeholder="TH,MM,LA  — wird automatisch auf der Karte angezeigt">
-    <div style="font-size:10px;color:var(--text3);margin-top:5px">
-      Beispiele: DE=Deutschland · TH=Thailand · PH=Philippinen · IS=Island · SE=Schweden · JP=Japan · AU=Australien
+    <label class="fl">Besuchte Länder</label>
+    <div style="display:flex;gap:6px;margin-bottom:7px">
+      <input class="fi" id="country-search" placeholder="🔍 Land suchen…" oninput="filterCountryDrop()" onfocus="showCountryDrop()" style="flex:1" autocomplete="off">
     </div>
+    <div id="country-dropdown" style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rsm);max-height:180px;overflow-y:auto;display:none;margin-bottom:8px"></div>
+    <div id="selected-countries" style="display:flex;flex-wrap:wrap;gap:5px;min-height:24px"></div>
+    <input type="hidden" id="et-countries">
   </div>
   <button class="btn btn-p" onclick="saveTrip()">Speichern</button>
   <button class="btn btn-g" onclick="closeOv('trip')">Abbrechen</button>
@@ -901,8 +915,16 @@ function renderTrips(){
     const tot=getTripTotal(t);
     const pct=t.budget?Math.min(100,Math.round(tot/t.budget*100)):0;
     const sl={planned:'Geplant',done:'Archiv',dream:'Bucket List'};
-    const nights=(t.stops||[]).reduce((s,st)=>s+pi(st.days),0);
+    // Nächte: zuerst aus Datum, dann aus Stationen
+    const nightsFromDate=(t.dateFrom&&t.dateTo)?Math.round((new Date(t.dateTo)-new Date(t.dateFrom))/86400000):0;
+    const nightsFromStops=(t.stops||[]).reduce((s,st)=>s+pi(st.days),0);
+    const nights=nightsFromDate||nightsFromStops;
     const r=t.review||{};
+    // Länder mit Flaggen
+    const countriesTags=(t.countries||[]).map(iso=>{
+      const c=ALL_COUNTRIES.find(c=>c.iso===iso);
+      return c?`${c.flag}`:`🌍`;
+    }).join(' ');
     return`<div class="tcard" onclick="openDetail('${t.id}')">
       <div class="tcard-top">
         <div class="tcard-flag">${t.flag||'🌍'}</div>
@@ -913,11 +935,10 @@ function renderTrips(){
       </div>
       <div class="tname">${t.name}</div>
       <div class="tmeta">
-        ${t.dateFrom?`<span>📅 ${fd(t.dateFrom)}</span>`:''}
-        ${(t.stops||[]).length?`<span>📍 ${t.stops.length} Orte</span>`:''}
+        ${t.dateFrom?`<span>📅 ${fd(t.dateFrom)}${t.dateTo?' – '+fd(t.dateTo):''}</span>`:''}
         ${nights?`<span>🌙 ${nights} Nächte</span>`:''}
         ${tot?`<span>💶 ${fm(tot)}</span>`:''}
-        ${(t.countries||[]).length?`<span>🗺 ${t.countries.join(', ')}</span>`:''}
+        ${countriesTags?`<span>${countriesTags}</span>`:''}
       </div>
       ${t.budget?`<div class="bbar"><div class="bfill" style="width:${pct}%"></div></div>
       <div class="blbl"><span>${fm(tot)}</span><span>${fm(t.budget)} Budget</span></div>`:''}
@@ -941,8 +962,10 @@ function renderTrips(){
 function openNewTripDr(){
   document.getElementById('trip-dr-t').textContent='Neue Reise';
   document.getElementById('et-id').value='';
-  ['et-name','et-flag','et-from','et-to','et-budget','et-dbudget','et-desc','et-countries'].forEach(i=>document.getElementById(i).value='');
+  ['et-name','et-flag','et-from','et-to','et-budget','et-dbudget','et-desc'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('et-status').value='planned';
+  document.getElementById('et-days-preview').style.display='none';
+  initCountryDropdown([]);
   openOv('trip');
 }
 function editCurrentTrip(){
@@ -957,15 +980,15 @@ function editCurrentTrip(){
   document.getElementById('et-budget').value=t.budget||'';
   document.getElementById('et-dbudget').value=t.dbudget||'';
   document.getElementById('et-desc').value=t.desc||'';
-  document.getElementById('et-countries').value=(t.countries||[]).join(',');
+  initCountryDropdown(t.countries||[]);
+  calcTripDays();
   openOv('trip');
 }
 function saveTrip(){
   const name=document.getElementById('et-name').value.trim();
   if(!name){toast('Name eingeben');return}
   const eid=document.getElementById('et-id').value;
-  const countries=document.getElementById('et-countries').value
-    .split(',').map(s=>s.trim().toUpperCase()).filter(s=>s.length>=2);
+  const countries=selectedISOs.slice(); // from dropdown state
   const trip={
     id:eid||gid(),name,
     flag:document.getElementById('et-flag').value.trim()||'🌍',
@@ -1611,46 +1634,190 @@ function saveReview(){
 // ═══════════════════════════════════════════════════════
 //  LEAFLET MAP — vollständig verknüpft mit Trips
 // ═══════════════════════════════════════════════════════
-const ISO_NAME={
-  'AF':'Afghanistan','AL':'Albanien','DZ':'Algerien','AD':'Andorra','AO':'Angola',
-  'AG':'Antigua','AR':'Argentinien','AM':'Armenien','AU':'Australien','AT':'Österreich',
-  'AZ':'Aserbaidschan','BS':'Bahamas','BH':'Bahrain','BD':'Bangladesch','BB':'Barbados',
-  'BY':'Weißrussland','BE':'Belgien','BZ':'Belize','BJ':'Benin','BT':'Bhutan',
-  'BO':'Bolivien','BA':'Bosnien','BW':'Botswana','BR':'Brasilien','BN':'Brunei',
-  'BG':'Bulgarien','BF':'Burkina Faso','BI':'Burundi','CV':'Kap Verde','KH':'Kambodscha',
-  'CM':'Kamerun','CA':'Kanada','CF':'Zentralafrika','TD':'Tschad','CL':'Chile',
-  'CN':'China','CO':'Kolumbien','KM':'Komoren','CG':'Kongo','CR':'Costa Rica',
-  'HR':'Kroatien','CU':'Kuba','CY':'Zypern','CZ':'Tschechien','DK':'Dänemark',
-  'DJ':'Dschibuti','DM':'Dominica','DO':'Dominikan. Rep.','EC':'Ecuador','EG':'Ägypten',
-  'SV':'El Salvador','GQ':'Äquatorialguinea','ER':'Eritrea','EE':'Estland','SZ':'Eswatini',
-  'ET':'Äthiopien','FJ':'Fidschi','FI':'Finnland','FR':'Frankreich','GA':'Gabun',
-  'GM':'Gambia','GE':'Georgien','DE':'Deutschland','GH':'Ghana','GR':'Griechenland',
-  'GD':'Grenada','GT':'Guatemala','GN':'Guinea','GW':'Guinea-Bissau','GY':'Guyana',
-  'HT':'Haiti','HN':'Honduras','HU':'Ungarn','IS':'Island','IN':'Indien',
-  'ID':'Indonesien','IR':'Iran','IQ':'Irak','IE':'Irland','IL':'Israel',
-  'IT':'Italien','JM':'Jamaika','JP':'Japan','JO':'Jordanien','KZ':'Kasachstan',
-  'KE':'Kenia','KI':'Kiribati','KW':'Kuwait','KG':'Kirgistan','LA':'Laos',
-  'LV':'Lettland','LB':'Libanon','LS':'Lesotho','LR':'Liberia','LY':'Libyen',
-  'LI':'Liechtenstein','LT':'Litauen','LU':'Luxemburg','MG':'Madagaskar','MW':'Malawi',
-  'MY':'Malaysia','MV':'Malediven','ML':'Mali','MT':'Malta','MH':'Marshallinseln',
-  'MR':'Mauretanien','MU':'Mauritius','MX':'Mexiko','FM':'Mikronesien','MD':'Moldau',
-  'MC':'Monaco','MN':'Mongolei','ME':'Montenegro','MA':'Marokko','MZ':'Mosambik',
-  'MM':'Myanmar','NA':'Namibia','NR':'Nauru','NP':'Nepal','NL':'Niederlande',
-  'NZ':'Neuseeland','NI':'Nicaragua','NE':'Niger','NG':'Nigeria','NO':'Norwegen',
-  'OM':'Oman','PK':'Pakistan','PW':'Palau','PA':'Panama','PG':'Papua-Neuguinea',
-  'PY':'Paraguay','PE':'Peru','PH':'Philippinen','PL':'Polen','PT':'Portugal',
-  'QA':'Katar','RO':'Rumänien','RU':'Russland','RW':'Ruanda','KN':'St. Kitts',
-  'LC':'St. Lucia','VC':'St. Vincent','WS':'Samoa','SM':'San Marino','ST':'São Tomé',
-  'SA':'Saudi-Arabien','SN':'Senegal','RS':'Serbien','SC':'Seychellen','SL':'Sierra Leone',
-  'SG':'Singapur','SK':'Slowakei','SI':'Slowenien','SB':'Salomonen','SO':'Somalia',
-  'ZA':'Südafrika','SS':'Südsudan','ES':'Spanien','LK':'Sri Lanka','SD':'Sudan',
-  'SR':'Suriname','SE':'Schweden','CH':'Schweiz','SY':'Syrien','TW':'Taiwan',
-  'TJ':'Tadschikistan','TZ':'Tansania','TH':'Thailand','TL':'Timor-Leste','TG':'Togo',
-  'TO':'Tonga','TT':'Trinidad','TN':'Tunesien','TR':'Türkei','TM':'Turkmenistan',
-  'TV':'Tuvalu','UG':'Uganda','UA':'Ukraine','AE':'Ver. Arab. Emirate','GB':'Großbritannien',
-  'US':'USA','UY':'Uruguay','UZ':'Usbekistan','VU':'Vanuatu','VE':'Venezuela',
-  'VN':'Vietnam','YE':'Jemen','ZM':'Sambia','ZW':'Simbabwe'
-};
+// ═══════════════════════════════════════════════════════
+//  COUNTRY DATA — vollständige Liste mit Flaggen
+// ═══════════════════════════════════════════════════════
+const ALL_COUNTRIES=[
+  {iso:'AF',name:'Afghanistan',flag:'🇦🇫'},{iso:'AL',name:'Albanien',flag:'🇦🇱'},
+  {iso:'DZ',name:'Algerien',flag:'🇩🇿'},{iso:'AD',name:'Andorra',flag:'🇦🇩'},
+  {iso:'AO',name:'Angola',flag:'🇦🇴'},{iso:'AG',name:'Antigua und Barbuda',flag:'🇦🇬'},
+  {iso:'AR',name:'Argentinien',flag:'🇦🇷'},{iso:'AM',name:'Armenien',flag:'🇦🇲'},
+  {iso:'AU',name:'Australien',flag:'🇦🇺'},{iso:'AT',name:'Österreich',flag:'🇦🇹'},
+  {iso:'AZ',name:'Aserbaidschan',flag:'🇦🇿'},{iso:'BS',name:'Bahamas',flag:'🇧🇸'},
+  {iso:'BH',name:'Bahrain',flag:'🇧🇭'},{iso:'BD',name:'Bangladesch',flag:'🇧🇩'},
+  {iso:'BB',name:'Barbados',flag:'🇧🇧'},{iso:'BY',name:'Weißrussland',flag:'🇧🇾'},
+  {iso:'BE',name:'Belgien',flag:'🇧🇪'},{iso:'BZ',name:'Belize',flag:'🇧🇿'},
+  {iso:'BJ',name:'Benin',flag:'🇧🇯'},{iso:'BT',name:'Bhutan',flag:'🇧🇹'},
+  {iso:'BO',name:'Bolivien',flag:'🇧🇴'},{iso:'BA',name:'Bosnien und Herzegowina',flag:'🇧🇦'},
+  {iso:'BW',name:'Botswana',flag:'🇧🇼'},{iso:'BR',name:'Brasilien',flag:'🇧🇷'},
+  {iso:'BN',name:'Brunei',flag:'🇧🇳'},{iso:'BG',name:'Bulgarien',flag:'🇧🇬'},
+  {iso:'BF',name:'Burkina Faso',flag:'🇧🇫'},{iso:'BI',name:'Burundi',flag:'🇧🇮'},
+  {iso:'CV',name:'Kap Verde',flag:'🇨🇻'},{iso:'KH',name:'Kambodscha',flag:'🇰🇭'},
+  {iso:'CM',name:'Kamerun',flag:'🇨🇲'},{iso:'CA',name:'Kanada',flag:'🇨🇦'},
+  {iso:'CF',name:'Zentralafrikanische Republik',flag:'🇨🇫'},{iso:'TD',name:'Tschad',flag:'🇹🇩'},
+  {iso:'CL',name:'Chile',flag:'🇨🇱'},{iso:'CN',name:'China',flag:'🇨🇳'},
+  {iso:'CO',name:'Kolumbien',flag:'🇨🇴'},{iso:'KM',name:'Komoren',flag:'🇰🇲'},
+  {iso:'CG',name:'Kongo',flag:'🇨🇬'},{iso:'CD',name:'DR Kongo',flag:'🇨🇩'},
+  {iso:'CR',name:'Costa Rica',flag:'🇨🇷'},{iso:'HR',name:'Kroatien',flag:'🇭🇷'},
+  {iso:'CU',name:'Kuba',flag:'🇨🇺'},{iso:'CY',name:'Zypern',flag:'🇨🇾'},
+  {iso:'CZ',name:'Tschechien',flag:'🇨🇿'},{iso:'DK',name:'Dänemark',flag:'🇩🇰'},
+  {iso:'DJ',name:'Dschibuti',flag:'🇩🇯'},{iso:'DM',name:'Dominica',flag:'🇩🇲'},
+  {iso:'DO',name:'Dominikanische Republik',flag:'🇩🇴'},{iso:'EC',name:'Ecuador',flag:'🇪🇨'},
+  {iso:'EG',name:'Ägypten',flag:'🇪🇬'},{iso:'SV',name:'El Salvador',flag:'🇸🇻'},
+  {iso:'GQ',name:'Äquatorialguinea',flag:'🇬🇶'},{iso:'ER',name:'Eritrea',flag:'🇪🇷'},
+  {iso:'EE',name:'Estland',flag:'🇪🇪'},{iso:'SZ',name:'Eswatini',flag:'🇸🇿'},
+  {iso:'ET',name:'Äthiopien',flag:'🇪🇹'},{iso:'FJ',name:'Fidschi',flag:'🇫🇯'},
+  {iso:'FI',name:'Finnland',flag:'🇫🇮'},{iso:'FR',name:'Frankreich',flag:'🇫🇷'},
+  {iso:'GA',name:'Gabun',flag:'🇬🇦'},{iso:'GM',name:'Gambia',flag:'🇬🇲'},
+  {iso:'GE',name:'Georgien',flag:'🇬🇪'},{iso:'DE',name:'Deutschland',flag:'🇩🇪'},
+  {iso:'GH',name:'Ghana',flag:'🇬🇭'},{iso:'GR',name:'Griechenland',flag:'🇬🇷'},
+  {iso:'GD',name:'Grenada',flag:'🇬🇩'},{iso:'GT',name:'Guatemala',flag:'🇬🇹'},
+  {iso:'GN',name:'Guinea',flag:'🇬🇳'},{iso:'GW',name:'Guinea-Bissau',flag:'🇬🇼'},
+  {iso:'GY',name:'Guyana',flag:'🇬🇾'},{iso:'HT',name:'Haiti',flag:'🇭🇹'},
+  {iso:'HN',name:'Honduras',flag:'🇭🇳'},{iso:'HU',name:'Ungarn',flag:'🇭🇺'},
+  {iso:'IS',name:'Island',flag:'🇮🇸'},{iso:'IN',name:'Indien',flag:'🇮🇳'},
+  {iso:'ID',name:'Indonesien',flag:'🇮🇩'},{iso:'IR',name:'Iran',flag:'🇮🇷'},
+  {iso:'IQ',name:'Irak',flag:'🇮🇶'},{iso:'IE',name:'Irland',flag:'🇮🇪'},
+  {iso:'IL',name:'Israel',flag:'🇮🇱'},{iso:'IT',name:'Italien',flag:'🇮🇹'},
+  {iso:'JM',name:'Jamaika',flag:'🇯🇲'},{iso:'JP',name:'Japan',flag:'🇯🇵'},
+  {iso:'JO',name:'Jordanien',flag:'🇯🇴'},{iso:'KZ',name:'Kasachstan',flag:'🇰🇿'},
+  {iso:'KE',name:'Kenia',flag:'🇰🇪'},{iso:'KI',name:'Kiribati',flag:'🇰🇮'},
+  {iso:'KW',name:'Kuwait',flag:'🇰🇼'},{iso:'KG',name:'Kirgistan',flag:'🇰🇬'},
+  {iso:'LA',name:'Laos',flag:'🇱🇦'},{iso:'LV',name:'Lettland',flag:'🇱🇻'},
+  {iso:'LB',name:'Libanon',flag:'🇱🇧'},{iso:'LS',name:'Lesotho',flag:'🇱🇸'},
+  {iso:'LR',name:'Liberia',flag:'🇱🇷'},{iso:'LY',name:'Libyen',flag:'🇱🇾'},
+  {iso:'LI',name:'Liechtenstein',flag:'🇱🇮'},{iso:'LT',name:'Litauen',flag:'🇱🇹'},
+  {iso:'LU',name:'Luxemburg',flag:'🇱🇺'},{iso:'MG',name:'Madagaskar',flag:'🇲🇬'},
+  {iso:'MW',name:'Malawi',flag:'🇲🇼'},{iso:'MY',name:'Malaysia',flag:'🇲🇾'},
+  {iso:'MV',name:'Malediven',flag:'🇲🇻'},{iso:'ML',name:'Mali',flag:'🇲🇱'},
+  {iso:'MT',name:'Malta',flag:'🇲🇹'},{iso:'MH',name:'Marshallinseln',flag:'🇲🇭'},
+  {iso:'MR',name:'Mauretanien',flag:'🇲🇷'},{iso:'MU',name:'Mauritius',flag:'🇲🇺'},
+  {iso:'MX',name:'Mexiko',flag:'🇲🇽'},{iso:'FM',name:'Mikronesien',flag:'🇫🇲'},
+  {iso:'MD',name:'Moldau',flag:'🇲🇩'},{iso:'MC',name:'Monaco',flag:'🇲🇨'},
+  {iso:'MN',name:'Mongolei',flag:'🇲🇳'},{iso:'ME',name:'Montenegro',flag:'🇲🇪'},
+  {iso:'MA',name:'Marokko',flag:'🇲🇦'},{iso:'MZ',name:'Mosambik',flag:'🇲🇿'},
+  {iso:'MM',name:'Myanmar',flag:'🇲🇲'},{iso:'NA',name:'Namibia',flag:'🇳🇦'},
+  {iso:'NR',name:'Nauru',flag:'🇳🇷'},{iso:'NP',name:'Nepal',flag:'🇳🇵'},
+  {iso:'NL',name:'Niederlande',flag:'🇳🇱'},{iso:'NZ',name:'Neuseeland',flag:'🇳🇿'},
+  {iso:'NI',name:'Nicaragua',flag:'🇳🇮'},{iso:'NE',name:'Niger',flag:'🇳🇪'},
+  {iso:'NG',name:'Nigeria',flag:'🇳🇬'},{iso:'NO',name:'Norwegen',flag:'🇳🇴'},
+  {iso:'OM',name:'Oman',flag:'🇴🇲'},{iso:'PK',name:'Pakistan',flag:'🇵🇰'},
+  {iso:'PW',name:'Palau',flag:'🇵🇼'},{iso:'PA',name:'Panama',flag:'🇵🇦'},
+  {iso:'PG',name:'Papua-Neuguinea',flag:'🇵🇬'},{iso:'PY',name:'Paraguay',flag:'🇵🇾'},
+  {iso:'PE',name:'Peru',flag:'🇵🇪'},{iso:'PH',name:'Philippinen',flag:'🇵🇭'},
+  {iso:'PL',name:'Polen',flag:'🇵🇱'},{iso:'PT',name:'Portugal',flag:'🇵🇹'},
+  {iso:'QA',name:'Katar',flag:'🇶🇦'},{iso:'RO',name:'Rumänien',flag:'🇷🇴'},
+  {iso:'RU',name:'Russland',flag:'🇷🇺'},{iso:'RW',name:'Ruanda',flag:'🇷🇼'},
+  {iso:'KN',name:'St. Kitts und Nevis',flag:'🇰🇳'},{iso:'LC',name:'St. Lucia',flag:'🇱🇨'},
+  {iso:'VC',name:'St. Vincent',flag:'🇻🇨'},{iso:'WS',name:'Samoa',flag:'🇼🇸'},
+  {iso:'SM',name:'San Marino',flag:'🇸🇲'},{iso:'ST',name:'São Tomé und Príncipe',flag:'🇸🇹'},
+  {iso:'SA',name:'Saudi-Arabien',flag:'🇸🇦'},{iso:'SN',name:'Senegal',flag:'🇸🇳'},
+  {iso:'RS',name:'Serbien',flag:'🇷🇸'},{iso:'SC',name:'Seychellen',flag:'🇸🇨'},
+  {iso:'SL',name:'Sierra Leone',flag:'🇸🇱'},{iso:'SG',name:'Singapur',flag:'🇸🇬'},
+  {iso:'SK',name:'Slowakei',flag:'🇸🇰'},{iso:'SI',name:'Slowenien',flag:'🇸🇮'},
+  {iso:'SB',name:'Salomonen',flag:'🇸🇧'},{iso:'SO',name:'Somalia',flag:'🇸🇴'},
+  {iso:'ZA',name:'Südafrika',flag:'🇿🇦'},{iso:'SS',name:'Südsudan',flag:'🇸🇸'},
+  {iso:'ES',name:'Spanien',flag:'🇪🇸'},{iso:'LK',name:'Sri Lanka',flag:'🇱🇰'},
+  {iso:'SD',name:'Sudan',flag:'🇸🇩'},{iso:'SR',name:'Suriname',flag:'🇸🇷'},
+  {iso:'SE',name:'Schweden',flag:'🇸🇪'},{iso:'CH',name:'Schweiz',flag:'🇨🇭'},
+  {iso:'SY',name:'Syrien',flag:'🇸🇾'},{iso:'TW',name:'Taiwan',flag:'🇹🇼'},
+  {iso:'TJ',name:'Tadschikistan',flag:'🇹🇯'},{iso:'TZ',name:'Tansania',flag:'🇹🇿'},
+  {iso:'TH',name:'Thailand',flag:'🇹🇭'},{iso:'TL',name:'Timor-Leste',flag:'🇹🇱'},
+  {iso:'TG',name:'Togo',flag:'🇹🇬'},{iso:'TO',name:'Tonga',flag:'🇹🇴'},
+  {iso:'TT',name:'Trinidad und Tobago',flag:'🇹🇹'},{iso:'TN',name:'Tunesien',flag:'🇹🇳'},
+  {iso:'TR',name:'Türkei',flag:'🇹🇷'},{iso:'TM',name:'Turkmenistan',flag:'🇹🇲'},
+  {iso:'TV',name:'Tuvalu',flag:'🇹🇻'},{iso:'UG',name:'Uganda',flag:'🇺🇬'},
+  {iso:'UA',name:'Ukraine',flag:'🇺🇦'},{iso:'AE',name:'Vereinigte Arabische Emirate',flag:'🇦🇪'},
+  {iso:'GB',name:'Großbritannien',flag:'🇬🇧'},{iso:'US',name:'USA',flag:'🇺🇸'},
+  {iso:'UY',name:'Uruguay',flag:'🇺🇾'},{iso:'UZ',name:'Usbekistan',flag:'🇺🇿'},
+  {iso:'VU',name:'Vanuatu',flag:'🇻🇺'},{iso:'VE',name:'Venezuela',flag:'🇻🇪'},
+  {iso:'VN',name:'Vietnam',flag:'🇻🇳'},{iso:'YE',name:'Jemen',flag:'🇾🇪'},
+  {iso:'ZM',name:'Sambia',flag:'🇿🇲'},{iso:'ZW',name:'Simbabwe',flag:'🇿🇼'},
+  {iso:'KR',name:'Südkorea',flag:'🇰🇷'},{iso:'KP',name:'Nordkorea',flag:'🇰🇵'},
+  {iso:'MK',name:'Nordmazedonien',flag:'🇲🇰'},{iso:'RS',name:'Serbien',flag:'🇷🇸'},
+  {iso:'XK',name:'Kosovo',flag:'🇽🇰'},{iso:'PS',name:'Palästina',flag:'🇵🇸'},
+  {iso:'HK',name:'Hongkong',flag:'🇭🇰'},{iso:'MO',name:'Macao',flag:'🇲🇴'},
+];
+// Build lookup maps
+const ISO_NAME=Object.fromEntries(ALL_COUNTRIES.map(c=>[c.iso,c.name]));
+const ISO_FLAG=Object.fromEntries(ALL_COUNTRIES.map(c=>[c.iso,c.flag]));
+
+// ═══════════════════════════════════════════════════════
+//  COUNTRY DROPDOWN
+// ═══════════════════════════════════════════════════════
+let selectedISOs=[];
+
+function showCountryDrop(){
+  filterCountryDrop();
+  document.getElementById('country-dropdown').style.display='block';
+}
+function hideCountryDrop(){
+  setTimeout(()=>{const d=document.getElementById('country-dropdown');if(d)d.style.display='none'},200);
+}
+function filterCountryDrop(){
+  const q=(document.getElementById('country-search')?.value||'').toLowerCase().trim();
+  const drop=document.getElementById('country-dropdown');
+  if(!drop)return;
+  const filtered=q
+    ?ALL_COUNTRIES.filter(c=>c.name.toLowerCase().includes(q)||c.iso.toLowerCase().includes(q)).slice(0,12)
+    :ALL_COUNTRIES.slice(0,12);
+  drop.style.display='block';
+  drop.innerHTML=filtered.length
+    ?filtered.map(c=>`<div class="cdrop-item" onmousedown="selectCountry('${c.iso}')">
+        <span class="cflag">${c.flag}</span>
+        <span class="cname">${c.name}</span>
+        <span class="ciso">${c.iso}</span>
+      </div>`).join('')
+    :`<div style="padding:12px;font-size:12px;color:var(--text3)">Kein Land gefunden</div>`;
+}
+function selectCountry(iso){
+  if(!selectedISOs.includes(iso)){
+    selectedISOs.push(iso);
+    renderSelectedCountries();
+    updateCountriesHidden();
+  }
+  document.getElementById('country-search').value='';
+  document.getElementById('country-dropdown').style.display='none';
+}
+function removeCountry(iso){
+  selectedISOs=selectedISOs.filter(i=>i!==iso);
+  renderSelectedCountries();
+  updateCountriesHidden();
+}
+function renderSelectedCountries(){
+  const el=document.getElementById('selected-countries');
+  if(!el)return;
+  el.innerHTML=selectedISOs.map(iso=>{
+    const c=ALL_COUNTRIES.find(c=>c.iso===iso)||{flag:'🌍',name:iso};
+    return`<div class="ctag">${c.flag} ${c.name}<button class="ctag-x" onmousedown="removeCountry('${iso}')">×</button></div>`;
+  }).join('');
+}
+function updateCountriesHidden(){
+  const h=document.getElementById('et-countries');
+  if(h)h.value=selectedISOs.join(',');
+}
+function initCountryDropdown(existing){
+  selectedISOs=existing||[];
+  renderSelectedCountries();
+  updateCountriesHidden();
+  const inp=document.getElementById('country-search');
+  if(inp){inp.onblur=hideCountryDrop;}
+}
+
+// ═══════════════════════════════════════════════════════
+//  TAGESBERECHNUNG
+// ═══════════════════════════════════════════════════════
+function calcTripDays(){
+  const from=document.getElementById('et-from')?.value;
+  const to=document.getElementById('et-to')?.value;
+  const prev=document.getElementById('et-days-preview');
+  const val=document.getElementById('et-days-val');
+  if(from&&to&&prev&&val){
+    const diff=Math.round((new Date(to)-new Date(from))/86400000);
+    if(diff>0){prev.style.display='block';val.textContent=diff;}
+    else prev.style.display='none';
+  }
+}
 
 function buildCountryMap(){
   // iso -> {visited:[trips], planned:[trips], wishlist:[trips]}

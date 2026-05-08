@@ -1395,25 +1395,24 @@ function importAll(input){
     catch(err){toast('JSON-Fehler: '+err.message);return;}
     // Format 1: {trips:[...]} — Vollexport
     if(p&&Array.isArray(p.trips)){
-      // Felder-Kompatibilität alte → neue App
       p.trips=p.trips.map(t=>{
         if('dreamBudget'in t&&!('estBudget'in t))t.estBudget=t.dreamBudget;
         if('desc'in t&&!('notes'in t))t.notes=t.desc;
         if('actualCpd'in t&&!('dailyCost'in t))t.dailyCost=t.actualCpd;
         return t;
       });
-      D=p;sd(D);renderTrips();toast('Import erfolgreich – '+p.trips.length+' Reisen ✓');
+      D=p;sd(D);nav('trips');toast('Import erfolgreich – '+p.trips.length+' Reisen ✓');
     }
     // Format 2: einzelne Reise {id, name, ...}
     else if(p&&p.id&&p.name){
       const i=D.trips.findIndex(t=>t.id===p.id);
       if(i>=0)D.trips[i]=p;else D.trips.unshift(p);
-      sd(D);renderTrips();toast('Reise importiert ✓');
+      sd(D);nav('trips');toast('Reise importiert ✓');
     }
     // Format 3: Array von Reisen [...]
     else if(Array.isArray(p)&&p.length&&p[0].id){
       p.forEach(t=>{const i=D.trips.findIndex(x=>x.id===t.id);if(i>=0)D.trips[i]=t;else D.trips.unshift(t);});
-      sd(D);renderTrips();toast(p.length+' Reisen importiert ✓');
+      sd(D);nav('trips');toast(p.length+' Reisen importiert ✓');
     }
     else{toast('Unbekanntes Format – kein "trips"-Array gefunden');}
   };

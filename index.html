@@ -1388,11 +1388,14 @@ function importAll(input){
   const r=new FileReader();
   r.onload=e=>{
     let raw=e.target.result;
+    if(!raw){toast('Datei leer!');return;}
+    toast('Datei geladen: '+raw.length+' Zeichen');
     if(raw.charCodeAt(0)===0xFEFF)raw=raw.slice(1);
     raw=raw.trim();
     let p;
     try{p=JSON.parse(raw)}
     catch(err){toast('JSON-Fehler: '+err.message);return;}
+    toast('Parsed – trips: '+(p.trips?p.trips.length:'kein trips-Key')+' | Keys: '+Object.keys(p).join(','));
     if(p&&Array.isArray(p.trips)&&p.trips.length>0){
       // Felder-Kompatibilität alte → neue App
       p.trips=p.trips.map(t=>{

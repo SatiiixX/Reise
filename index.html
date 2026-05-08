@@ -843,6 +843,8 @@ function savePrefs(){sp(P)}
 // Trip filter
 let tripFilter=P.tripFilter||'all';
 let docFilter=P.docFilter||'all';
+let curTrip=null;
+let curDoc=null;
 
 // Restore chip state
 function restoreChips(){
@@ -1386,35 +1388,40 @@ function importAll(input){
   const r=new FileReader();
   r.onload=e=>{
     let raw=e.target.result;
-    // BOM entfernen falls vorhanden
     if(raw.charCodeAt(0)===0xFEFF)raw=raw.slice(1);
-    // Trailing whitespace/nullbytes
     raw=raw.trim();
     let p;
     try{p=JSON.parse(raw)}
     catch(err){toast('JSON-Fehler: '+err.message);return;}
-    // Format 1: {trips:[...]} — Vollexport
-    if(p&&Array.isArray(p.trips)){
+    if(p&&Array.isArray(p.trips)&&p.trips.length>0){
+      // Felder-Kompatibilität alte → neue App
       p.trips=p.trips.map(t=>{
         if('dreamBudget'in t&&!('estBudget'in t))t.estBudget=t.dreamBudget;
         if('desc'in t&&!('notes'in t))t.notes=t.desc;
         if('actualCpd'in t&&!('dailyCost'in t))t.dailyCost=t.actualCpd;
         return t;
       });
-      D=p;sd(D);nav('trips');toast('Import erfolgreich – '+p.trips.length+' Reisen ✓');
+      // Direkt D setzen und speichern
+      D.trips=p.trips;
+      D.docs=p.docs||D.docs||[];
+      D.countries=p.countries||D.countries||[];
+      sd(D);
+      // Explizit zu trips navigieren und rendern
+      tripFilter='all';
+      nav('trips');
+      toast('✓ '+p.trips.length+' Reisen importiert');
     }
-    // Format 2: einzelne Reise {id, name, ...}
+    else if(p&&Array.isArray(p.trips)&&p.trips.length===0){
+      toast('JSON hat 0 Reisen – nichts zu importieren');
+    }
     else if(p&&p.id&&p.name){
       const i=D.trips.findIndex(t=>t.id===p.id);
       if(i>=0)D.trips[i]=p;else D.trips.unshift(p);
       sd(D);nav('trips');toast('Reise importiert ✓');
     }
-    // Format 3: Array von Reisen [...]
-    else if(Array.isArray(p)&&p.length&&p[0].id){
-      p.forEach(t=>{const i=D.trips.findIndex(x=>x.id===t.id);if(i>=0)D.trips[i]=t;else D.trips.unshift(t);});
-      sd(D);nav('trips');toast(p.length+' Reisen importiert ✓');
+    else{
+      toast('Unbekanntes Format (Keys: '+Object.keys(p||{}).join(', ')+')');
     }
-    else{toast('Unbekanntes Format – kein "trips"-Array gefunden');}
   };
   r.readAsText(f,'utf-8');
 }

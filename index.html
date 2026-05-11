@@ -22,9 +22,10 @@
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Display:ital,wght@0,300;0,600;1,300;1,600&family=Noto+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
 <style>
 :root{
+  --font:system-ui,-apple-system,'Segoe UI',sans-serif;
   --bg:#0f172a;--bg2:#1e293b;--bg3:#293548;
   --card:#1e293b;--card2:#273447;
   --gold:#f59e0b;--gold2:#fbbf24;--gold3:rgba(245,158,11,.12);
@@ -61,7 +62,7 @@
   --border:rgba(148,163,184,.1);--border2:rgba(148,163,184,.18);
   --map-bg:#0a1628;--map-land:#1a3050;--map-stroke:#0d1e38;
 }
-.leaflet-container{font-family:'Noto Sans',sans-serif!important;border-radius:16px}
+.leaflet-container{font-family:system-ui,-apple-system,'Segoe UI',sans-serif!important;border-radius:16px}
 .leaflet-popup-content-wrapper{background:var(--card)!important;color:var(--text)!important;border:1px solid var(--border2)!important;border-radius:12px!important;box-shadow:0 8px 24px rgba(0,0,0,.4)!important}
 .leaflet-popup-content{margin:10px 14px!important;font-size:13px!important;color:var(--text)!important}
 .leaflet-popup-tip{background:var(--card)!important}
@@ -70,7 +71,7 @@
 .leaflet-control-attribution{background:rgba(0,0,0,.5)!important;color:var(--text3)!important;font-size:9px!important}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden;overscroll-behavior:none}
-body{font-family:'Noto Sans',sans-serif;background:var(--bg);color:var(--text);
+body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);
   display:flex;flex-direction:column;max-width:430px;margin:0 auto;position:relative}
 
 /* SCREENS */
@@ -90,7 +91,7 @@ body{font-family:'Noto Sans',sans-serif;background:var(--bg);color:var(--text);
   padding-bottom:var(--safe-bot)}
 .nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
   background:none;border:none;color:#8da4be;
-  font-family:'Noto Sans',sans-serif;font-size:10px;font-weight:500;
+  font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:10px;font-weight:500;
   letter-spacing:.3px;cursor:pointer;padding:10px 4px 8px;
   transition:color .15s;-webkit-tap-highlight-color:transparent}
 .nb svg{width:22px;height:22px;stroke-width:1.7;stroke:currentColor;fill:none}
@@ -108,7 +109,7 @@ body{font-family:'Noto Sans',sans-serif;background:var(--bg);color:var(--text);
 /* HEADER */
 .ph{padding:calc(var(--safe-top) + 20px) 20px 12px;
   background:linear-gradient(180deg,var(--bg2) 0%,transparent 100%)}
-.ph-t{font-family:'Noto Serif Display',serif;font-size:28px;font-weight:600;line-height:1.1}
+.ph-t{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:28px;font-weight:600;line-height:1.1}
 .ph-t em{font-style:italic;color:var(--gold)}
 .ph-s{color:var(--text2);font-size:12px;margin-top:4px}
 
@@ -124,7 +125,7 @@ body{font-family:'Noto Sans',sans-serif;background:var(--bg);color:var(--text);
 .dr::-webkit-scrollbar{display:none}
 @keyframes drUp{from{transform:translateY(100%)}to{transform:none}}
 .dhandle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:12px auto 20px}
-.dr-title{font-family:'Noto Serif Display',serif;font-size:22px;font-weight:600;margin-bottom:18px}
+.dr-title{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:22px;font-weight:600;margin-bottom:18px}
 
 /* FORMS */
 .fg{margin-bottom:14px}
@@ -132,7 +133,7 @@ body{font-family:'Noto Sans',sans-serif;background:var(--bg);color:var(--text);
   letter-spacing:.8px;color:var(--text3);margin-bottom:6px}
 .fi{width:100%;background:var(--bg3);border:1.5px solid var(--border);
   border-radius:var(--rsm);color:var(--text);
-  font-family:'Noto Sans',sans-serif;font-size:14px;
+  font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:14px;
   padding:12px 14px;outline:none;transition:border .15s;-webkit-appearance:none}
 .fi:focus{border-color:var(--gold)}
 .fi option{background:var(--bg2)}
@@ -141,14 +142,14 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6}
 
 /* BUTTONS */
 .btn{width:100%;padding:14px;border:none;border-radius:var(--rsm);
-  font-family:'Noto Sans',sans-serif;font-size:14px;font-weight:600;
+  font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:14px;font-weight:600;
   cursor:pointer;transition:all .15s;margin-bottom:9px}
 .btn:active{transform:scale(.98)}
 .btn-p{background:var(--gold);color:#fff}
 .btn-g{background:var(--bg3);color:var(--text2);border:1.5px solid var(--border2)}
 .btn-d{background:rgba(248,113,113,.1);color:var(--coral);border:1.5px solid rgba(248,113,113,.2)}
 .bsm{padding:6px 14px;border:none;border-radius:10px;
-  font-family:'Noto Sans',sans-serif;font-size:12px;font-weight:600;
+  font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:12px;font-weight:600;
   cursor:pointer;transition:all .15s}
 .bsm:active{transform:scale(.94)}
 .bsm-p{background:var(--gold3);color:var(--gold)}
@@ -168,7 +169,7 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6}
 .sbar{padding:0 20px 12px;position:relative}
 .sbar input{width:100%;background:var(--bg3);border:1.5px solid var(--border);
   border-radius:14px;padding:11px 16px 11px 42px;
-  color:var(--text);font-family:'Noto Sans',sans-serif;font-size:14px;outline:none}
+  color:var(--text);font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:14px;outline:none}
 .sbar input:focus{border-color:var(--gold)}
 .sbar svg{position:absolute;left:32px;top:50%;transform:translateY(-50%);
   width:18px;height:18px;stroke:var(--text3);fill:none;pointer-events:none;stroke-width:2}
@@ -180,7 +181,7 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6}
 .tcard:active{transform:scale(.985)}
 .tcard-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px}
 .tcard-flag{font-size:34px;line-height:1;flex-shrink:0}
-.tname{font-family:'Noto Serif Display',serif;font-size:18px;font-weight:600;margin-bottom:6px}
+.tname{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:18px;font-weight:600;margin-bottom:6px}
 .tmeta{display:flex;flex-wrap:wrap;gap:8px}
 .tmeta span{font-size:12px;color:var(--text2);font-weight:500}
 
@@ -194,7 +195,7 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6}
 .slabel{font-size:10px;font-weight:700;text-transform:uppercase;
   letter-spacing:1.5px;color:var(--text2);padding:8px 20px 6px}
 .shead{display:flex;justify-content:space-between;align-items:center;padding:12px 0 10px}
-.stitle{font-family:'Noto Serif Display',serif;font-size:16px;font-weight:600}
+.stitle{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:16px;font-weight:600}
 .addbtn{background:var(--gold3);border:none;color:var(--gold);
   width:30px;height:30px;border-radius:10px;font-size:20px;
   cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:300}
@@ -203,7 +204,7 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6}
 .stiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 20px}
 .stile{background:var(--card);border:1px solid var(--border);
   border-radius:var(--rsm);padding:14px 8px;text-align:center}
-.sv{font-family:'Noto Serif Display',serif;font-size:24px;font-weight:600;color:var(--gold)}
+.sv{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:24px;font-weight:600;color:var(--gold)}
 .sl{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin-top:3px}
 
 .stiles2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
@@ -211,7 +212,7 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6}
   border-radius:var(--rsm);padding:14px 12px;transition:background .15s;cursor:pointer}
 .stile2.accent{border-color:rgba(245,158,11,.25);background:linear-gradient(135deg,var(--card),rgba(245,158,11,.04))}
 .stile2:active{background:var(--card2)}
-.sv2{font-family:'Noto Serif Display',serif;font-size:20px;font-weight:600;color:var(--gold);margin-bottom:4px}
+.sv2{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:20px;font-weight:600;color:var(--gold);margin-bottom:4px}
 .sl2{font-size:11px;color:var(--text2)}
 
 /* CARD */
@@ -222,7 +223,7 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6}
 .empty{display:flex;flex-direction:column;align-items:center;gap:10px;
   padding:52px 20px;color:var(--text3);text-align:center}
 .empty svg{stroke:var(--text3);opacity:.4}
-.empty h3{font-family:'Noto Serif Display',serif;font-size:18px;color:var(--text2)}
+.empty h3{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:18px;color:var(--text2)}
 .empty p{font-size:13px}
 
 /* MAP */
@@ -252,7 +253,7 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6}
 .dhero{padding:calc(var(--safe-top) + 16px) 20px 14px;
   background:linear-gradient(180deg,var(--bg2) 0%,transparent 100%)}
 .dhero-flag{font-size:52px;line-height:1;margin-bottom:8px}
-.dhero-t{font-family:'Noto Serif Display',serif;font-size:26px;font-weight:600}
+.dhero-t{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:26px;font-weight:600}
 .dhero-s{font-size:12px;color:var(--text2);margin-top:5px}
 .back{background:var(--bg3);border:1px solid var(--border2);border-radius:12px;
   width:40px;height:40px;display:flex;align-items:center;justify-content:center;
@@ -280,7 +281,7 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6}
 .vitem-sub{font-size:11px;color:var(--text2);margin-top:2px}
 
 /* BUDGET */
-.btotal{font-family:'Noto Serif Display',serif;font-size:36px;font-weight:300;color:var(--gold);line-height:1}
+.btotal{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:36px;font-weight:300;color:var(--gold);line-height:1}
 .btotal-sub{font-size:18px}
 .bbar{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin:8px 0 4px}
 .bfill{height:100%;background:var(--gold);border-radius:2px;transition:width .3s}
@@ -290,7 +291,7 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6}
 .bcat-h{display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:3px}
 .bbr{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden}
 .bbrf{height:100%;border-radius:2px;transition:width .3s}
-.ins-v{font-family:'Noto Serif Display',serif;font-size:22px;font-weight:600;color:var(--gold);margin-top:4px}
+.ins-v{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:22px;font-weight:600;color:var(--gold);margin-top:4px}
 .bov{background:var(--bg3);border-radius:var(--rsm);padding:12px;margin-bottom:12px}
 .forecast{background:var(--card);border:1px solid var(--border);border-radius:var(--rsm);padding:12px;margin-bottom:10px}
 .forecast-t{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin-bottom:8px}
@@ -414,7 +415,7 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6}
 <div id="scr-map" class="scr">
   <div id="map-header" style="padding:calc(var(--safe-top) + 12px) 20px 10px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
     <div>
-      <div style="font-family:'Noto Serif Display',serif;font-size:18px;font-weight:600">Weltkarte</div>
+      <div style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:18px;font-weight:600">Weltkarte</div>
       <div id="map-count" style="font-size:11px;color:var(--text3);margin-top:2px">Keine Länder</div>
     </div>
     <div class="map-legend">
@@ -2537,19 +2538,19 @@ function renderSettings(){
     statsEl.innerHTML=`
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div style="text-align:center;padding:8px;background:var(--bg3);border-radius:10px">
-          <div style="font-size:24px;font-weight:600;color:var(--gold);font-family:'Noto Serif Display',serif">${trips}</div>
+          <div style="font-size:24px;font-weight:600;color:var(--gold);font-family:system-ui,-apple-system,'Segoe UI',sans-serif">${trips}</div>
           <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px">Reisen</div>
         </div>
         <div style="text-align:center;padding:8px;background:var(--bg3);border-radius:10px">
-          <div style="font-size:24px;font-weight:600;color:var(--green);font-family:'Noto Serif Display',serif">${done}</div>
+          <div style="font-size:24px;font-weight:600;color:var(--green);font-family:system-ui,-apple-system,'Segoe UI',sans-serif">${done}</div>
           <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px">Archiviert</div>
         </div>
         <div style="text-align:center;padding:8px;background:var(--bg3);border-radius:10px">
-          <div style="font-size:24px;font-weight:600;color:var(--teal);font-family:'Noto Serif Display',serif">${countries}</div>
+          <div style="font-size:24px;font-weight:600;color:var(--teal);font-family:system-ui,-apple-system,'Segoe UI',sans-serif">${countries}</div>
           <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px">Länder</div>
         </div>
         <div style="text-align:center;padding:8px;background:var(--bg3);border-radius:10px">
-          <div style="font-size:24px;font-weight:600;color:var(--violet);font-family:'Noto Serif Display',serif">${docs}</div>
+          <div style="font-size:24px;font-weight:600;color:var(--violet);font-family:system-ui,-apple-system,'Segoe UI',sans-serif">${docs}</div>
           <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px">Dokumente</div>
         </div>
       </div>`;

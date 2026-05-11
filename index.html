@@ -893,6 +893,14 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6}
   <button class="btn btn-g" onclick="closeOv('review')">Abbrechen</button>
 </div></div>
 
+<!-- STOP DETAIL -->
+<div class="ov" id="ov-stop-detail" onclick="closeOv('stop-detail')"><div class="dr" onclick="event.stopPropagation()">
+  <div class="dhandle"></div>
+  <div class="dr-title" id="stop-detail-title"></div>
+  <div id="stop-detail-body"></div>
+  <button class="btn btn-g" onclick="closeOv('stop-detail')" style="margin-top:8px">Schließen</button>
+</div></div>
+
 <!-- INSIGHT DRAWER -->
 <div class="ov" id="ov-insight" onclick="closeOv('insight')"><div class="dr" onclick="event.stopPropagation()">
   <div class="dhandle"></div>
@@ -1434,7 +1442,7 @@ function renderStops(t){
       <div style="width:2px;height:16px;background:var(--border2);margin-left:11px;flex-shrink:0"></div>
       <span style="font-size:11px;color:var(--text3)">${tr}${s.tc?' · '+fm(s.tc):''}</span>
     </div>`:'';
-    return connector+`<div class="stcard">
+    return connector+`<div class="stcard" onclick="openStopDetail('${s.id}')" style="cursor:pointer">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
           <div style="background:var(--gold);color:#000;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${i+1}</div>
@@ -1448,8 +1456,8 @@ function renderStops(t){
           </div>
         </div>
         <div style="display:flex;gap:5px;flex-shrink:0;margin-left:8px">
-          <button class="bsm bsm-g" onclick="editStop('${s.id}')">✏️</button>
-          <button class="bsm bsm-d" onclick="delStop('${s.id}')">✕</button>
+          <button class="bsm bsm-g" onclick="event.stopPropagation();editStop('${s.id}')">✏️</button>
+          <button class="bsm bsm-d" onclick="event.stopPropagation();delStop('${s.id}')">✕</button>
         </div>
       </div>
     </div>`;
@@ -2645,6 +2653,39 @@ function applyTheme(theme){
 function toggleTheme(){
   const cur=document.documentElement.getAttribute('data-theme')||'dark';
   applyTheme(cur==='dark'?'light':'dark');
+}
+
+function openStopDetail(id){
+  const t=D.trips.find(t=>t.id===curTrip);if(!t)return;
+  const s=t.stops.find(s=>s.id===id);if(!s)return;
+  const TRANS={'✈️ Flug':'✈️ Flug','🚌 Bus':'🚌 Bus','⛵ Fähre':'⛵ Fähre',
+    '🏍️ Motorrad':'🏍️ Motorrad','🚗 Auto':'🚗 Auto','🚂 Zug':'🚂 Zug',
+    '🚢 Schiff':'🚢 Schiff','🚶 Zu Fuß':'🚶 Zu Fuß'};
+  const cost=pf(s.tc)+pf(s.ac)*pi(s.days)+pf(s.fd)*pi(s.days)+pf(s.act);
+  const nights=pi(s.days)||1;
+  const rows=[
+    s.transport?['Anreise',s.transport]:null,
+    s.days?['Aufenthalt',nights+' '+(nights===1?'Tag':'Tage')]:null,
+    s.tc?['Transport',fm(pf(s.tc))]:null,
+    s.ac?['Unterkunft / Nacht',fm(pf(s.ac))+' × '+nights+' = '+fm(pf(s.ac)*nights)]:null,
+    s.fd?['Essen / Tag',fm(pf(s.fd))+' × '+nights+' = '+fm(pf(s.fd)*nights)]:null,
+    s.act?['Aktivitäten',fm(pf(s.act))]:null,
+    cost?['Gesamt Station',fm(cost)]:null,
+    s.coords?['Koordinaten',s.coords]:null,
+    s.notes?['Notizen',s.notes]:null,
+  ].filter(Boolean);
+
+  document.getElementById('stop-detail-title').textContent='📍 '+s.name;
+  document.getElementById('stop-detail-body').innerHTML=rows.map(([l,v])=>`
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:12px;color:var(--text2);font-weight:500;min-width:120px">${l}</span>
+      <span style="font-size:13px;font-weight:600;text-align:right;flex:1">${v}</span>
+    </div>`).join('')+`
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-g" onclick="closeOv('stop-detail');editStop('${s.id}')" style="flex:1;margin:0">✏️ Bearbeiten</button>
+      <button class="btn btn-d" onclick="closeOv('stop-detail');showConfirm('Station löschen?',()=>delStop('${s.id}'))" style="flex:0;padding:13px 16px;margin:0">✕</button>
+    </div>`;
+  openOv('stop-detail');
 }
 // ═══ SWIPE NAVIGATION ═══
 (function initSwipe(){
